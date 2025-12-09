@@ -1,30 +1,38 @@
 """
-FastAPI + MongoDB (Beanie ODM) skeleton for SmartEdu
+FastAPI + MongoDB (Beanie ODM) backend for SmartEdu
 
-Mirrors the Django models we designed:
-- users: Institution, ClassGroup, User (simplified)
-- lectures: Course, Lecture, Quiz, Question, Option, etc.
-- marketplace: ProductCategory, Product, Redemption, PointTransaction
-
-Setup:
-    pip install fastapi uvicorn beanie motor pydantic[email]
+Includes:
+- Full domain models:
+  users: Institution, ClassGroup, User
+  lectures: Course, Lecture, Quiz, Question, Option, etc.
+  marketplace: ProductCategory, Product, Redemption, PointTransaction
+- JWT authentication:
+  POST /auth/register/
+  POST /auth/login/
+  POST /auth/refresh/
+  GET  /auth/me/
 
 Run:
     uvicorn app:app --reload
-
-Make sure MongoDB is running locally (mongodb://localhost:27017)
-Or change MONGO_URI below.
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional, List
 
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, HttpUrl, Field
-from motor.motor_asyncio import AsyncIOMotorClient
-from beanie import Document, init_beanie, Link
+from beanie import Document, Link, init_beanie
 from bson import ObjectId
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    status,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError, jwt
+from motor.motor_asyncio import AsyncIOMotorClient
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr, HttpUrl, Field
 
 
 # -------------------------------------------------
@@ -33,6 +41,15 @@ from bson import ObjectId
 
 MONGO_URI = "mongodb://localhost:27017"
 DB_NAME = "smartedu_db"
+
+# JWT CONFIG
+SECRET_KEY = "change-this-secret-in-prod"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+bearer_scheme = HTTPBearer(auto_error=True)
 
 
 # -------------------------------------------------
@@ -44,8 +61,8 @@ class Institution(Document):
     code: str = Field(..., description="Short unique code used for joining, e.g. GRIET2025")
     address: Optional[str] = ""
 
-    logo: Optional[str] = None                   # store URL/path
-    banner_image: Optional[str] = None           # store URL/path
+    logo: Optional[str] = None          # store URL/path
+    banner_image: Optional[str] = None  # store URL/path
     website: Optional[HttpUrl] = None
     contact_email: Optional[EmailStr] = None
     contact_phone: Optional[str] = None
@@ -88,8 +105,7 @@ class UserRole:
 
 class User(Document):
     """
-    Simplified user model (we're not doing full auth here).
-    In a real app, you'd integrate JWT + password hashing separately.
+    User with password hash for auth + profile fields.
     """
     username: str
     email: Optional[EmailStr] = None
@@ -110,7 +126,10 @@ class User(Document):
     date_of_birth: Optional[date] = None
     bio: Optional[str] = None
 
+    # Auth
+    hashed_password: str
     is_active: bool = True
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:
@@ -434,6 +453,110 @@ class PointTransaction(Document):
 
 
 # -------------------------------------------------
+# AUTH HELPERS
+# -------------------------------------------------
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def get_user_from_token(token: str, expected_type: str) -> User:
+    credentials_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_type = payload.get("type")
+        if token_type != expected_type:
+            raise credentials_exc
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exc
+    except JWTError:
+        raise credentials_exc
+
+    user = await User.get(user_id)
+    if user is None or not user.is_active:
+        raise credentials_exc
+    return user
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> User:
+    token = credentials.credentials
+    return await get_user_from_token(token, expected_type="access")
+
+
+# -------------------------------------------------
+# Pydantic Schemas for Auth & Simple CRUD
+# -------------------------------------------------
+
+class UserCreate(BaseModel):
+    username: str
+    email: Optional[EmailStr] = None
+    password: str
+    role: Optional[str] = UserRole.STUDENT
+
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+    email: Optional[EmailStr] = None
+    role: str
+    wallet_address: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenPair(BaseModel):
+    access: str
+    refresh: str
+
+
+class TokenRefreshRequest(BaseModel):
+    refresh: str
+
+
+class InstitutionCreate(BaseModel):
+    name: str
+    code: str
+    address: Optional[str] = None
+
+
+class CourseCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    teacher_id: Optional[str] = None
+
+
+# -------------------------------------------------
 # FASTAPI APP + INIT
 # -------------------------------------------------
 
@@ -441,7 +564,7 @@ app = FastAPI(title="SmartEdu FastAPI + MongoDB")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # adjust in real deploy
+    allow_origins=["*"],  # tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -450,9 +573,6 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def app_init():
-    """
-    Initialize Mongo connection and Beanie on startup.
-    """
     client = AsyncIOMotorClient(MONGO_URI)
     db = client[DB_NAME]
 
@@ -480,15 +600,67 @@ async def app_init():
 
 
 # -------------------------------------------------
-# SIMPLE SAMPLE ENDPOINTS
-# (So you can verify it's alive)
+# AUTH ENDPOINTS  (Django SimpleJWT-compatible shapes)
 # -------------------------------------------------
 
-class InstitutionCreate(BaseModel):
-    name: str
-    code: str
-    address: Optional[str] = None
+@app.post("/auth/register/", response_model=UserOut, status_code=201)
+async def register_user(data: UserCreate):
+    existing = await User.find_one(User.username == data.username)
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
+    user = User(
+        username=data.username,
+        email=data.email,
+        role=data.role or UserRole.STUDENT,
+        hashed_password=hash_password(data.password),
+    )
+    await user.insert()
+
+    return UserOut(
+        id=str(user.id),
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        wallet_address=user.wallet_address,
+    )
+
+
+@app.post("/auth/login/", response_model=TokenPair)
+async def login_user(payload: LoginRequest):
+    user = await User.find_one(User.username == payload.username)
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    claims = {"sub": str(user.id), "username": user.username}
+    access = create_access_token(claims)
+    refresh = create_refresh_token(claims)
+    return TokenPair(access=access, refresh=refresh)
+
+
+@app.post("/auth/refresh/", response_model=dict)
+async def refresh_access_token(data: TokenRefreshRequest):
+    user = await get_user_from_token(data.refresh, expected_type="refresh")
+    claims = {"sub": str(user.id), "username": user.username}
+    access = create_access_token(claims)
+    return {"access": access}
+
+
+@app.get("/auth/me/", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return UserOut(
+        id=str(current_user.id),
+        username=current_user.username,
+        email=current_user.email,
+        role=current_user.role,
+        wallet_address=current_user.wallet_address,
+    )
+
+
+# -------------------------------------------------
+# SIMPLE SAMPLE DOMAIN ENDPOINTS
+# (you can attach auth requirements later as you wish)
+# -------------------------------------------------
 
 @app.post("/institutions", response_model=Institution)
 async def create_institution(data: InstitutionCreate):
@@ -510,56 +682,16 @@ async def list_institutions():
     return await Institution.find_all().to_list()
 
 
-class UserCreate(BaseModel):
-    username: str
-    email: Optional[EmailStr] = None
-    role: str = UserRole.STUDENT
-    institution_id: Optional[str] = None
-    class_group_id: Optional[str] = None
-
-
-@app.post("/users", response_model=User)
-async def create_user(data: UserCreate):
-    inst = None
-    cg = None
-    if data.institution_id:
-        inst = await Institution.get(ObjectId(data.institution_id))
-        if not inst:
-            raise HTTPException(status_code=404, detail="Institution not found")
-    if data.class_group_id:
-        cg = await ClassGroup.get(ObjectId(data.class_group_id))
-        if not cg:
-            raise HTTPException(status_code=404, detail="ClassGroup not found")
-
-    user = User(
-        username=data.username,
-        email=data.email,
-        role=data.role,
-        institution=inst,
-        class_group=cg,
-    )
-    await user.insert()
-    return user
-
-
-@app.get("/users", response_model=List[User])
-async def list_users():
-    return await User.find_all().to_list()
-
-
-class CourseCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    teacher_id: Optional[str] = None
-
-
 @app.post("/courses", response_model=Course)
-async def create_course(data: CourseCreate):
+async def create_course(data: CourseCreate, current_user: User = Depends(get_current_user)):
     teacher = None
     if data.teacher_id:
-        teacher = await User.get(ObjectId(data.teacher_id))
+        teacher = await User.get(data.teacher_id)
         if not teacher:
             raise HTTPException(status_code=404, detail="Teacher not found")
+    else:
+        # default to current user if they are teacher
+        teacher = current_user
 
     course = Course(
         title=data.title,
