@@ -96,3 +96,18 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=password,
         )
         return user
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "bio",
+            "mobile_number",
+            "profile_image",
+            "gender",
+            "date_of_birth",
+        ]
+
+        read_only_fields = ["username"]

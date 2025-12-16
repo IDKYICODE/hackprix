@@ -1,54 +1,108 @@
 // lib/authClient.ts
+
 import axios, { AxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
-const API_URL = "http://10.0.2.2:8000/api"; 
-// Android emulator -> 10.0.2.2
-// iOS simulator -> http://localhost:8000
-// Real device -> "http://YOUR_LAN_IP:8000/api"
+const API_URL =
+Platform.OS === "android"
+? "http://10.0.2.2:8000/api"
+: "http://192.168.31.114:8000/api";
 
+// 🔑 Single source of truth for keys
 const ACCESS_KEY = "accessToken";
 const REFRESH_KEY = "refreshToken";
 
+/* -----------------------------
+Cross-platform secure storage
+-------------------------------- */
+const storage = {
+async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === "web") {
+      return localStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+
+  async setItem(key: string, value: string): Promise<void> {
+    if (Platform.OS === "web") {
+      localStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+
+  async deleteItem(key: string): Promise<void> {
+    if (Platform.OS === "web") {
+      localStorage.removeItem(key);
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  },
+};
+
+/* -----------------------------
+   Token helpers
+-------------------------------- */
 async function saveTokens(access: string, refresh?: string) {
-  await SecureStore.setItemAsync(ACCESS_KEY, access);
-  if (refresh) await SecureStore.setItemAsync(REFRESH_KEY, refresh);
+  await storage.setItem(ACCESS_KEY, access);
+  if (refresh) {
+    await storage.setItem(REFRESH_KEY, refresh);
+  }
 }
 
-async function getAccessToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(ACCESS_KEY);
+async function getAccessToken() {
+  return storage.getItem(ACCESS_KEY);
 }
 
-async function getRefreshToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(REFRESH_KEY);
+async function getRefreshToken() {
+  return storage.getItem(REFRESH_KEY);
 }
 
 export async function clearTokens() {
-  await SecureStore.deleteItemAsync(ACCESS_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
+  await storage.deleteItem(ACCESS_KEY);
+  await storage.deleteItem(REFRESH_KEY);
 }
 
+/* -----------------------------
+   Axios instance
+-------------------------------- */
 export const api = axios.create({
   baseURL: API_URL,
+  timeout: 10000,
+  headers: { "Content-Type": "application/json" },
 });
 
-// attach access token
+/* -----------------------------
+   Request interceptor
+   (DO NOT attach token to login/refresh)
+-------------------------------- */
 api.interceptors.request.use(async (config) => {
-  const token = await getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const skipAuth =
+    config.url?.includes("/auth/login/") ||
+    config.url?.includes("/auth/refresh/");
+
+  if (!skipAuth) {
+    const token = await getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
+
   return config;
 });
 
-// refresh on 401
+/* -----------------------------
+   Response interceptor (auto-refresh)
+-------------------------------- */
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest?._retry) {
       originalRequest._retry = true;
+
       const refresh = await getRefreshToken();
       if (!refresh) {
         await clearTokens();
@@ -56,15 +110,16 @@ api.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post(`${API_URL}/auth/refresh/`, { refresh });
+        const res = await api.post("/auth/refresh/", { refresh });
         const newAccess = (res.data as any).access;
-        await saveTokens(newAccess, refresh);
 
+        await saveTokens(newAccess, refresh);
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
-        return axios(originalRequest);
-      } catch (e) {
+
+        return api(originalRequest);
+      } catch {
         await clearTokens();
-        return Promise.reject(e);
+        return Promise.reject(error);
       }
     }
 
@@ -72,12 +127,15 @@ api.interceptors.response.use(
   }
 );
 
-// high-level helpers
+/* -----------------------------
+   Auth API helpers
+-------------------------------- */
 export async function loginRequest(username: string, password: string) {
-  const { data } = await axios.post(`${API_URL}/auth/login/`, {
+  const { data } = await api.post("/auth/login/", {
     username,
     password,
   });
+
   await saveTokens(data.access, data.refresh);
 
   const meRes = await api.get("/auth/me/");
@@ -91,4 +149,13 @@ export async function fetchCurrentUser() {
   } catch {
     return null;
   }
+}
+
+export async function updateProfile(formData: FormData) {
+  const res = await api.patch("/auth/profile/", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
 }

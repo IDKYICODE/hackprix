@@ -86,7 +86,14 @@ class ClassGroup(models.Model):
         blank=True,
         null=True,
     )
-    class_teacher_name = models.CharField(max_length=200, blank=True, null=True)
+    class_teacher_name =  models.ForeignKey(
+        "users.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="managed_classes",
+        limit_choices_to={"role": "teacher"},
+    )
     description = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

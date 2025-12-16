@@ -22,7 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
      path("api/auth/", include("users.urls")),
     # later:
-    #path("api/lectures/", include("lectures.urls")),
+    path("api/lectures/", include("lectures.urls")),
     # path("api/marketplace/", include("marketplace.urls")),
 ]
 
