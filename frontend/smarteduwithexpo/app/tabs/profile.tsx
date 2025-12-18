@@ -192,7 +192,7 @@ export default function Profile() {
 
       <View style={styles.section}>
         <Text style={styles.label}>Email</Text>
-        <Text style={styles.valueText}>{user.email}</Text>
+        <Text style={stylezs.valueText}>{user.email}</Text>
       </View>
 
       {/* Save Button */}

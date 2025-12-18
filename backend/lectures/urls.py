@@ -6,6 +6,7 @@ from .views import (
     LectureListCreateView,
     LectureDetailView,
     ResourceListView,
+    CompleteQuizView,
 )
 
 urlpatterns = [
@@ -22,4 +23,5 @@ urlpatterns = [
         "resources/",
         ResourceListView.as_view(),
     ),
+    path('quiz/<int:quiz_id>/complete/', CompleteQuizView.as_view(), name='quiz-complete'),
 ]

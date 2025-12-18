@@ -4,3 +4,5 @@ psycopg2-binary
 python-dotenv
 drf-yasg
 web3
+django-cors-headers
+Pillow

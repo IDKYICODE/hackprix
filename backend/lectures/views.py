@@ -10,6 +10,13 @@ from .serializers import (
     LearningResourceSerializer,
 )
 
+# lectures/views.py updates
+from .blockchain_utils import award_edutokens
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Quiz, QuizSubmission
+from utils.blockchain import award_edutokens
 
 # -------------------
 # Courses
@@ -137,3 +144,40 @@ class ResourceListView(generics.ListAPIView):
             qs = qs.filter(lecture_id=lecture_id)
 
         return qs
+
+class CompleteQuizView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, quiz_id):
+        user = request.user
+        
+        # 1. Demo Logic: Assume they passed and deserve 50 points
+        reward_points = 50 
+        
+        # 2. Create DB record (using your existing model)
+        submission = QuizSubmission.objects.create(
+            quiz_id=quiz_id,
+            student=user,
+            score=100.0,
+            max_score=100.0,
+            points_awarded=reward_points
+        )
+
+        # 3. Blockchain Logic
+        if user.wallet_address:
+            tx_hash, error = award_edutokens(user.wallet_address, reward_points)
+            
+            if not error:
+                # Update DB with the blockchain receipt (hash)
+                submission.points_tx_hash = tx_hash
+                submission.save()
+                
+                return Response({
+                    "message": f"Successfully awarded {reward_points} EDU tokens!",
+                    "tx_hash": tx_hash,
+                    "db_id": submission.id
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"error": f"Blockchain failed: {error}"}, status=500)
+        
+        return Response({"message": "Quiz saved, but no wallet linked to award tokens."}, status=200)
