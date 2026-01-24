@@ -11,9 +11,10 @@ def run_test():
     student_pvt_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
     print(f"--- DEMO START: Student {student_address} ---")
-
+    print(f"Student Balance: {get_live_balance(student_address)} EDU")
     # 1. Earn points from Quiz
     print("\n[Admin] Awarding 200 EDU Tokens for passing Quiz...")
+    
     award_edutokens(student_address, 200)
     print(f"Student Balance: {get_live_balance(student_address)} EDU")
 

@@ -1,10 +1,13 @@
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginScreen() {
   // The useAuth hook is now the single source of truth for the login action.
   const { login } = useAuth();
+  const router = useRouter();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +34,11 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    console.log("Google Login pressed");
+    // TODO: Implement Google Sign-In logic
   };
 
   return (
@@ -90,6 +98,37 @@ export default function LoginScreen() {
         {loading && <ActivityIndicator size="small" color="#fff" style={{marginRight: 8}}/>}
         <Text style={{ color: "#fff", fontWeight: "600" }}>
           {loading ? "Logging in..." : "Login"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Google Sign In Button */}
+      <TouchableOpacity
+        onPress={handleGoogleLogin}
+        style={{
+          backgroundColor: "#fff",
+          padding: 16,
+          borderRadius: 14,
+          alignItems: "center",
+          flexDirection: 'row',
+          justifyContent: 'center',
+          marginTop: 16,
+          borderWidth: 1,
+          borderColor: '#ccc'
+        }}
+      >
+        <Ionicons name="logo-google" size={24} color="#DB4437" style={{ marginRight: 8 }} />
+        <Text style={{ color: "#333", fontWeight: "600" }}>
+          Sign in with Google
+        </Text>
+      </TouchableOpacity>
+
+      {/* Sign Up Link */}
+      <TouchableOpacity 
+        onPress={() => router.push("/auth/signup")}
+        style={{ marginTop: 24, alignItems: 'center' }}
+      >
+        <Text style={{ color: "#666" }}>
+          New to app? <Text style={{ color: "#00E5FF", fontWeight: "600" }}>Sign Up</Text>
         </Text>
       </TouchableOpacity>
     </View>

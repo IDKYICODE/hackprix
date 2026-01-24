@@ -80,6 +80,7 @@ export const api = axios.create({
 api.interceptors.request.use(async (config) => {
   const skipAuth =
     config.url?.includes("/auth/login/") ||
+    config.url?.includes("/auth/register/") ||
     config.url?.includes("/auth/refresh/");
 
   if (!skipAuth) {
@@ -140,6 +141,26 @@ export async function loginRequest(username: string, password: string) {
 
   const meRes = await api.get("/auth/me/");
   return meRes.data;
+}
+
+export async function registerRequest(userData: any) {
+  const { data } = await api.post("/auth/register/", userData);
+  
+  // Save tokens if returned (auto-login)
+  if (data.access && data.refresh) {
+    await saveTokens(data.access, data.refresh);
+    
+    // Fetch and return the full user object if needed, though 'data.user' might already be present
+    // If the backend returns the same structure as login (user + tokens), we can just return data.user
+    if (data.user) {
+        return data.user;
+    } else {
+        // Fallback: fetch me
+        const meRes = await api.get("/auth/me/");
+        return meRes.data;
+    }
+  }
+  return data;
 }
 
 export async function fetchCurrentUser() {

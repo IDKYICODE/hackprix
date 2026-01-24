@@ -14,17 +14,20 @@ const InitialLayout = () => {
     if (loading) return; // Wait until the auth state is fully loaded
 
     const inTabsGroup = segments[0] === "tabs";
+    const inAuthGroup = segments[0] === "auth";
 
     // If the user is not signed in and they are not in the auth section,
     // redirect them to the login screen.
-    if (!user && !inTabsGroup) {
+    // NOTE: We check specifically for the login screen to avoid redirect loops
+    // or disrupting navigation to signup.
+    if (!user && !inTabsGroup && !inAuthGroup) {
       console.log("[Layout] User not found and not in auth group, redirecting to login.");
       router.replace("/auth/login");
     }
-    // If the user is signed in and they are in the auth section,
+    // If the user is signed in and they are trying to access auth screens,
     // redirect them to the main app screen.
-    else if (user && inTabsGroup === false) {
-      console.log("[Layout] User found and not in tabs group, redirecting to home.");
+    else if (user && inAuthGroup) {
+      console.log("[Layout] User found and in auth group, redirecting to home.");
       router.replace("/tabs/Home");
     }
   }, [user, loading, segments, router]);
@@ -41,6 +44,7 @@ const InitialLayout = () => {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="tabs" options={{ headerShown: false }} />
       <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
     </Stack>
   );
 };

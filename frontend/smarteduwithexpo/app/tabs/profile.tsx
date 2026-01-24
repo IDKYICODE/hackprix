@@ -64,7 +64,7 @@ export default function Profile() {
   -------------------------------- */
  const pickImage = async () => {
    const result = await ImagePicker.launchImageLibraryAsync({
-     mediaTypes: ["images"],
+     mediaTypes: "images",
      allowsEditing: true,
      aspect: [1, 1],
      quality: 0.7,
@@ -148,7 +148,7 @@ export default function Profile() {
         <Text style={styles.profileName}>{user.username}</Text>
 
         <Text style={styles.profileMeta}>
-          {user.role.toUpperCase()}
+          {user.role?.toUpperCase()}
         </Text>
 
         <Text style={styles.profileMeta}>
@@ -192,7 +192,7 @@ export default function Profile() {
 
       <View style={styles.section}>
         <Text style={styles.label}>Email</Text>
-        <Text style={stylezs.valueText}>{user.email}</Text>
+        <Text style={styles.valueText}>{user.email}</Text>
       </View>
 
       {/* Save Button */}

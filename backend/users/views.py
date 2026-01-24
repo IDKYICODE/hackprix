@@ -4,16 +4,31 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from utils.blockchain import get_live_balance
-
+from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserProfileUpdateSerializer, UserSerializer, RegisterSerializer
 
 
 class RegisterView(generics.CreateAPIView):
     """
     POST /api/auth/register/
+    Registers user AND returns JWT tokens (auto-login).
     """
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # 🔐 Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "user": UserSerializer(user).data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        })
 
 
 class MeView(APIView):

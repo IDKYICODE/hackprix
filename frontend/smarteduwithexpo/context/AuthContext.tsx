@@ -1,6 +1,6 @@
 // authcontext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { loginRequest, clearTokens, fetchCurrentUser } from "@/lib/authClient";
+import { loginRequest, registerRequest, clearTokens, fetchCurrentUser } from "@/lib/authClient";
 
 // Define a type for the user data you expect from the API
 type User = {
@@ -19,6 +19,7 @@ type AuthContextType = {
   user: User | null; // Store the user object instead of a boolean
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  register: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
    setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
@@ -62,6 +63,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const register = async (userData: any) => {
+    setLoading(true);
+    try {
+      const userResult = await registerRequest(userData);
+      console.log("[Auth] Registration successful, setting user:", userResult);
+      setUser(userResult);
+    } catch (error) {
+        console.error("[Auth] Registration failed:", error);
+        throw error;
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const logout = async () => {
     console.log("[Auth] Logging out.");
     await clearTokens();
@@ -71,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       // Value is now based on the presence of the user object
-      value={{ user, loading, login, logout,setUser }}
+      value={{ user, loading, login, register, logout, setUser }}
     >
       {children}
     </AuthContext.Provider>
