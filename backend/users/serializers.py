@@ -4,7 +4,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .models import Institution
 User = get_user_model()
+
+
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institution
+        fields = "__all__"
+
 
 
 class UserSerializer(serializers.ModelSerializer):

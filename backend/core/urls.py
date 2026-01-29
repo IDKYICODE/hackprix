@@ -23,7 +23,7 @@ urlpatterns = [
      path("api/auth/", include("users.urls")),
     # later:
     path("api/lectures/", include("lectures.urls")),
-    # path("api/marketplace/", include("marketplace.urls")),
+    path("api/marketplace/", include("marketplace.urls")),
 ]
 
 from django.conf import settings

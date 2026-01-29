@@ -1,38 +1,47 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Marketplace from "./pages/Marketplace";
+import CartPage from "./pages/CartPage";
 import Lounge from "./pages/Lounge";
 import Profile from "./pages/Profile";
 import SubjectDetail from "./pages/SubjectDetail";
 import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ProtectedRoute from "./components/ProtectedRoute";
+import GuestRoute from "./components/GuestRoute";
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/lounge" element={<Lounge />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/subject/:subjectId" element={<SubjectDetail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <BrowserRouter>
+    <Routes>
+      {/* Routes for unauthenticated users */}
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
+
+      {/* Routes for authenticated users */}
+      <Route element={<ProtectedRoute />}>
+        <Route
+          path="/*"
+          element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/lounge" element={<Lounge />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/subject/:subjectId" element={<SubjectDetail />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+          }
+        />
+      </Route>
+    </Routes>
+  </BrowserRouter>
 );
 
 export default App;

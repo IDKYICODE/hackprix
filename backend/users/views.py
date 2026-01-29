@@ -5,7 +5,27 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from utils.blockchain import get_live_balance
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserProfileUpdateSerializer, UserSerializer, RegisterSerializer
+from .models import Institution
+from .serializers import (
+    InstitutionSerializer,
+    UserProfileUpdateSerializer,
+    UserSerializer,
+    RegisterSerializer,
+)
+
+
+class InstitutionByCodeView(generics.RetrieveAPIView):
+    """
+    GET /api/institutions/<code>/
+    Returns institution details by its unique code.
+    """
+
+    queryset = Institution.objects.all()
+    serializer_class = InstitutionSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = "code"
+
+
 
 
 class RegisterView(generics.CreateAPIView):

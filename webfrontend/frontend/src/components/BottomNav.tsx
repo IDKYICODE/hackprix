@@ -1,10 +1,11 @@
-import { Home, ShoppingBag, Gamepad2, User } from "lucide-react";
+import { Home, ShoppingBag, Gamepad2, User, ShoppingCart } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const BottomNav = () => {
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
     { icon: ShoppingBag, label: "Marketplace", path: "/marketplace" },
+    { icon: ShoppingCart, label: "Cart", path: "/cart" },
     { icon: Gamepad2, label: "Lounge", path: "/lounge" },
     { icon: User, label: "Profile", path: "/profile" },
   ];

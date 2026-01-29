@@ -1,67 +1,38 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ShoppingCart } from "lucide-react";
+import { Coins, ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const items = [
-  {
-    id: 1,
-    name: "Physics Textbook",
-    category: "Books",
-    price: 250,
-    icon: "📚",
-    description: "Complete guide to quantum mechanics",
-  },
-  {
-    id: 2,
-    name: "VR Headset Skin",
-    category: "VR Gear",
-    price: 500,
-    icon: "🥽",
-    description: "Holographic blue theme",
-  },
-  {
-    id: 3,
-    name: "Lab Coat Avatar",
-    category: "Avatars",
-    price: 350,
-    icon: "🥼",
-    description: "Professional scientist outfit",
-  },
-  {
-    id: 4,
-    name: "Chemistry Set",
-    category: "Items",
-    price: 400,
-    icon: "⚗️",
-    description: "Virtual experiment kit",
-  },
-  {
-    id: 5,
-    name: "Math Genius Badge",
-    category: "Badges",
-    price: 300,
-    icon: "🏆",
-    description: "Show off your skills",
-  },
-  {
-    id: 6,
-    name: "Neon Particle Effect",
-    category: "Effects",
-    price: 450,
-    icon: "✨",
-    description: "Animated trail effect",
-  },
-];
+import { useAuth } from "@/context/AuthContext";
+import { fetchProducts, addToCart } from "@/lib/authClient";
+import { Product } from "@/types";
 
 const Marketplace = () => {
-  const userCoins = 850;
+  const { user } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handlePurchase = (item: typeof items[0]) => {
-    if (userCoins >= item.price) {
-      toast.success(`Purchased ${item.name}! 🎉`);
-    } else {
-      toast.error("Not enough EduCoins! 💰");
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchProducts();
+        setProducts(data);
+      } catch (error) {
+        toast.error("Failed to fetch products.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  const handleAddToCart = async (productId: number) => {
+    try {
+      await addToCart(productId, 1);
+      toast.success("Item added to cart! 🛒");
+    } catch (error) {
+      toast.error("Failed to add item to cart.");
     }
   };
 
@@ -82,7 +53,7 @@ const Marketplace = () => {
             </div>
             <div>
               <p className="text-sm text-white/80">Your Balance</p>
-              <p className="text-2xl font-bold text-white">{userCoins}</p>
+              <p className="text-2xl font-bold text-white">{user?.edu_coins ?? 0}</p>
             </div>
           </div>
           <ShoppingCart className="w-6 h-6 text-white/80" />
@@ -90,38 +61,45 @@ const Marketplace = () => {
       </Card>
 
       {/* Items Grid */}
-      <div className="space-y-3">
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            className="p-4 shadow-card gradient-card border-border hover:border-accent/50 transition-all"
-          >
-            <div className="flex gap-4">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-accent/20 to-secondary/20 flex items-center justify-center text-3xl flex-shrink-0">
-                {item.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold text-foreground">{item.name}</h3>
-                  <div className="flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full flex-shrink-0">
-                    <Coins className="w-4 h-4 text-secondary" />
-                    <span className="text-sm font-bold text-secondary">{item.price}</span>
-                  </div>
+      {loading ? (
+        <div className="flex justify-center mt-20">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {products.map((item) => (
+            <Card
+              key={item.id}
+              className="p-4 shadow-card gradient-card border-border hover:border-accent/50 transition-all"
+            >
+              <div className="flex gap-4">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-accent/20 to-secondary/20 flex items-center justify-center text-3xl flex-shrink-0">
+                  {/* Displaying a placeholder if no thumbnail */}
+                  {item.thumbnail ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover rounded-xl" /> : '🛍️'}
                 </div>
-                <p className="text-xs text-accent mb-1">{item.category}</p>
-                <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
-                <Button
-                  size="sm"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground glow-cyan"
-                  onClick={() => handlePurchase(item)}
-                >
-                  Purchase
-                </Button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h3 className="font-semibold text-foreground">{item.name}</h3>
+                    <div className="flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full flex-shrink-0">
+                      <Coins className="w-4 h-4 text-secondary" />
+                      <span className="text-sm font-bold text-secondary">{item.points_price}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-accent mb-1">{item.category_name}</p>
+                  <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                  <Button
+                    size="sm"
+                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground glow-cyan"
+                    onClick={() => handleAddToCart(item.id)}
+                  >
+                    Add to Cart
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

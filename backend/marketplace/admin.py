@@ -91,7 +91,6 @@ class ProductAdmin(admin.ModelAdmin):
             "fields": (
                 "digital_file",
                 "external_url",
-                "shipping_address",
             ),
             "classes": ("collapse",),
         }),

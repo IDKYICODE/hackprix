@@ -1,5 +1,6 @@
 import os
 import django
+from web3 import Web3
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 django.setup()
 
@@ -7,8 +8,9 @@ from utils.blockchain import award_edutokens, execute_marketplace_purchase, get_
 
 def run_test():
     # Account #1 from Hardhat for testing
-    student_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-    student_pvt_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+    raw_address = "0xbcd4042de499d14e55001ccbb24a551f3b954096"
+    student_address = Web3.to_checksum_address(raw_address)
+    student_pvt_key = "0xf214f2b2cd398c806f84e317254e0f0b801d0643303237d97a22a48e01628897"
 
     print(f"--- DEMO START: Student {student_address} ---")
     print(f"Student Balance: {get_live_balance(student_address)} EDU")

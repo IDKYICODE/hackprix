@@ -1,30 +1,122 @@
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Award, Trophy, Star, Settings } from "lucide-react";
+import { Award, Trophy, Star, Settings, X, Pencil, LogOut, User as UserIcon, Wallet } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { fetchWalletInfo } from "@/lib/authClient";
 
-const badges = [
-  { id: 1, name: "Math Master", icon: "🔢", earned: true },
-  { id: 2, name: "Chemistry Pro", icon: "🧪", earned: true },
-  { id: 3, name: "VR Champion", icon: "🥽", earned: true },
-  { id: 4, name: "7-Day Streak", icon: "🔥", earned: true },
-  { id: 5, name: "Physics Wizard", icon: "⚛️", earned: false },
-  { id: 6, name: "Biology Expert", icon: "🧬", earned: false },
-];
-
-const achievements = [
-  { title: "Completed 10 Lessons", date: "2 days ago", xp: 100 },
-  { title: "Won VR Game", date: "3 days ago", xp: 50 },
-  { title: "Purchased First Item", date: "5 days ago", xp: 25 },
-];
+type WalletInfo = {
+  address: string | null;
+  balance: number;
+  symbol: string;
+};
 
 const Profile = () => {
-  const userName = "Alex Chen";
-  const userLevel = 12;
-  const userXP = 2450;
-  const nextLevelXP = 3000;
-  const userCoins = 850;
-  const xpProgress = (userXP / nextLevelXP) * 100;
+  const { user, fetchUser, updateUserProfile, logout } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    username: "",
+    bio: "",
+    mobile_number: "",
+    wallet_address: "",
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      if (!user) {
+        await fetchUser();
+      }
+      const walletData = await fetchWalletInfo();
+      setWalletInfo(walletData);
+      setLoading(false);
+    };
+    loadData();
+  }, [fetchUser, user]);
+
+  useEffect(() => {
+    if (user) {
+      setEditFormData({
+        username: user.username || "",
+        bio: user.bio || "",
+        mobile_number: user.mobile_number || "",
+        wallet_address: user.wallet_address || "",
+      });
+    }
+  }, [user]);
+  
+  // Close settings dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleEditAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append("profile_image", file);
+      await updateUserProfile(formData);
+    }
+  };
+
+  const handleEditProfile = () => {
+    setSettingsOpen(false);
+    setEditModalOpen(true);
+  };
+
+  const handleLogout = () => {
+    setSettingsOpen(false);
+    logout();
+  };
+  
+  const handleModalFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
+  };
+
+  const handleModalFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateUserProfile(editFormData);
+    setEditModalOpen(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Could not load user profile.</p>
+      </div>
+    );
+  }
+
+  const userLevel = Math.floor((user.xp || 0) / 1000);
+  const nextLevelXP = (userLevel + 1) * 1000;
+  const xpProgress = user.xp ? ((user.xp % 1000) / 10) : 0;
 
   return (
     <div className="pb-20 px-4 pt-6 max-w-lg mx-auto min-h-screen">
@@ -34,19 +126,56 @@ const Profile = () => {
           <h1 className="text-3xl font-bold text-gradient mb-2">Profile</h1>
           <p className="text-muted-foreground">Track your learning journey</p>
         </div>
-        <Button size="icon" variant="outline" className="rounded-xl">
-          <Settings className="w-5 h-5" />
-        </Button>
+        <div className="relative" ref={settingsRef}>
+          <Button size="icon" variant="outline" className="rounded-xl" onClick={() => setSettingsOpen(prev => !prev)}>
+            <Settings className="w-5 h-5" />
+          </Button>
+          {isSettingsOpen && (
+            <Card className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border z-10">
+              <Button variant="ghost" className="w-full justify-start" onClick={handleEditProfile}>
+                <UserIcon className="w-4 h-4 mr-2" />
+                Edit Profile
+              </Button>
+              <Button variant="ghost" className="w-full justify-start text-red-500" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Profile Card */}
       <Card className="p-6 mb-6 shadow-float gradient-cyber">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-secondary flex items-center justify-center text-4xl shadow-lg">
-            👨‍🚀
+          <div
+            className="relative w-20 h-20 group"
+            onMouseEnter={() => setIsHoveringAvatar(true)}
+            onMouseLeave={() => setIsHoveringAvatar(false)}
+          >
+            <img
+              src={user.profile_image || "/placeholder.svg"}
+              alt="Profile"
+              className="w-full h-full rounded-full object-cover"
+            />
+            {isHoveringAvatar && (
+              <div
+                className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center cursor-pointer"
+                onClick={handleEditAvatarClick}
+              >
+                <Pencil className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
+            />
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-primary-foreground">{userName}</h2>
+            <h2 className="text-2xl font-bold text-primary-foreground">{user.username}</h2>
             <div className="flex items-center gap-2 mt-1">
               <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
               <span className="text-primary-foreground font-semibold">Level {userLevel}</span>
@@ -57,7 +186,7 @@ const Profile = () => {
           <div className="flex justify-between text-sm text-primary-foreground/80">
             <span>XP Progress</span>
             <span>
-              {userXP} / {nextLevelXP}
+              {user.xp || 0} / {nextLevelXP}
             </span>
           </div>
           <Progress value={xpProgress} className="h-2" />
@@ -68,65 +197,129 @@ const Profile = () => {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <Card className="p-4 shadow-card gradient-card border-accent/20">
           <Trophy className="w-8 h-8 text-accent mb-2" />
-          <p className="text-2xl font-bold">{userXP}</p>
+          <p className="text-2xl font-bold">{user.xp || 0}</p>
           <p className="text-sm text-muted-foreground">Total XP</p>
         </Card>
         <Card className="p-4 shadow-card gradient-card border-secondary/20">
           <Award className="w-8 h-8 text-secondary mb-2" />
-          <p className="text-2xl font-bold">{userCoins}</p>
+          <p className="text-2xl font-bold">{walletInfo && walletInfo.address ?walletInfo.balance : 0}</p>
           <p className="text-sm text-muted-foreground">EduCoins</p>
         </Card>
       </div>
 
-      {/* Badges Section */}
-      <div className="mb-6">
-        <h3 className="text-lg font-bold mb-3">Your Badges</h3>
+       {/* Wallet Information */}
+       <div className="mb-6">
+        <h3 className="text-lg font-bold mb-3">Wallet Information</h3>
         <Card className="p-4 shadow-card gradient-card">
-          <div className="grid grid-cols-3 gap-3">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className={`p-3 rounded-xl text-center transition-all ${
-                  badge.earned
-                    ? "bg-gradient-to-br from-accent/20 to-secondary/20 border border-accent/30"
-                    : "bg-muted/30 opacity-50"
-                }`}
-              >
-                <div className="text-3xl mb-1">{badge.icon}</div>
-                <p className="text-xs font-medium">{badge.name}</p>
+          {walletInfo && walletInfo.address ? (
+            <div className="space-y-2 text-sm">
+               <div className="flex items-center justify-between">
+                <span className="font-semibold text-muted-foreground flex items-center"><Wallet className="w-4 h-4 mr-2"/>Balance:</span>
+                <span className="text-foreground font-mono text-lg">{walletInfo.balance} {walletInfo.symbol}</span>
               </div>
-            ))}
+              <div className="flex flex-col">
+                <span className="font-semibold text-muted-foreground">Address:</span>
+                <span className="text-foreground text-xs mt-1 break-all">{walletInfo.address}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center">No wallet address linked.</p>
+          )}
+        </Card>
+      </div>
+
+      {/* Basic Information */}
+      <div className="mb-6">
+        <h3 className="text-lg font-bold mb-3">Basic Information</h3>
+        <Card className="p-4 shadow-card gradient-card">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="font-semibold text-muted-foreground">Role:</span>
+              <span className="text-foreground capitalize">{user.role}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-muted-foreground">Email:</span>
+              <span className="text-foreground">{user.email}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-muted-foreground">Mobile:</span>
+              <span className="text-foreground">{user.mobile_number || "Not provided"}</span>
+            </div>
+             <div className="flex justify-between">
+              <span className="font-semibold text-muted-foreground">Institution:</span>
+              <span className="text-foreground">{user.institution_name || "Not provided"}</span>
+            </div>
           </div>
         </Card>
       </div>
 
-      {/* Recent Achievements */}
+      {/* Bio Section */}
       <div className="mb-6">
-        <h3 className="text-lg font-bold mb-3">Recent Achievements</h3>
-        <div className="space-y-3">
-          {achievements.map((achievement, idx) => (
-            <Card key={idx} className="p-4 shadow-card gradient-card border-border">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-foreground">{achievement.title}</p>
-                  <p className="text-sm text-muted-foreground">{achievement.date}</p>
-                </div>
-                <span className="text-sm font-bold text-accent">+{achievement.xp} XP</span>
+        <h3 className="text-lg font-bold mb-3">About Me</h3>
+        <Card className="p-4 shadow-card gradient-card">
+          <p className="text-foreground text-sm">{user.bio || "No bio provided."}</p>
+        </Card>
+      </div>
+      
+      {/* Edit Profile Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg m-4 p-6 relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4"
+              onClick={() => setEditModalOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <h3 className="text-lg font-bold mb-4">Edit Profile</h3>
+            <form onSubmit={handleModalFormSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  value={editFormData.username}
+                  onChange={handleModalFormChange}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                />
               </div>
-            </Card>
-          ))}
+               <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Mobile Number</label>
+                <input
+                  type="text"
+                  name="mobile_number"
+                  value={editFormData.mobile_number}
+                  onChange={handleModalFormChange}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Bio</label>
+                <textarea
+                  name="bio"
+                  value={editFormData.bio}
+                  onChange={handleModalFormChange}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                  rows={4}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Wallet Address</label>
+                <input
+                  type="text"
+                  name="wallet_address"
+                  value={editFormData.wallet_address}
+                  onChange={handleModalFormChange}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                />
+              </div>
+              <Button type="submit">Save Changes</Button>
+            </form>
+          </Card>
         </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" className="w-full">
-          📜 My Certificates
-        </Button>
-        <Button variant="outline" className="w-full">
-          ✏️ Edit Avatar
-        </Button>
-      </div>
+      )}
     </div>
   );
 };
