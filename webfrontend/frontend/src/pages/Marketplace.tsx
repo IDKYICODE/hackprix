@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NavLink } from "@/components/NavLink";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Coins, ShoppingCart, Loader2 } from "lucide-react";
@@ -39,9 +40,14 @@ const Marketplace = () => {
   return (
     <div className="pb-20 px-4 pt-6 max-w-lg mx-auto min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gradient mb-2">Marketplace</h1>
-        <p className="text-muted-foreground">Spend your EduCoins wisely</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gradient mb-2">Marketplace</h1>
+          <p className="text-muted-foreground">Spend your EduCoins wisely</p>
+        </div>
+        <NavLink to="/cart" className="text-black/80">
+          <ShoppingCart className="w-6 h-6" />
+        </NavLink>
       </div>
 
       {/* Wallet */}
@@ -56,7 +62,6 @@ const Marketplace = () => {
               <p className="text-2xl font-bold text-white">{user?.edu_coins ?? 0}</p>
             </div>
           </div>
-          <ShoppingCart className="w-6 h-6 text-white/80" />
         </div>
       </Card>
 

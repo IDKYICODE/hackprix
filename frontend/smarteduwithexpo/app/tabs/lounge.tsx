@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Linking } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Lounge() {
@@ -24,7 +24,10 @@ export default function Lounge() {
         </View>
         <View style={styles.joinContainer}>
             <Text style={styles.playerCount}>12/20</Text>
-            <TouchableOpacity style={styles.joinButton}>
+            <TouchableOpacity 
+              style={styles.joinButton}
+              onPress={() => Linking.openURL('https://blood-game-c44cb.web.app/')}
+            >
                 <Text style={styles.joinButtonText}>Join Room</Text>
             </TouchableOpacity>
         </View>
@@ -33,13 +36,34 @@ export default function Lounge() {
       <View style={styles.gameCard}>
         <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/330/330351.png' }} style={styles.gameImage} />
         <View style={styles.gameDetails}>
-          <Text style={styles.gameName}>Molecule Forge</Text>
+          <Text style={styles.gameName}>Molecule Builder</Text>
           <Text style={styles.gameCategory}>Chemistry</Text>
-          <Text style={styles.gameDescription}>Build molecules by bonding atoms</Text>
+          <Text style={styles.gameDescription}>Build 3D molecules in VR</Text>
         </View>
         <View style={styles.joinContainer}>
             <Text style={styles.playerCount}>8/15</Text>
-            <TouchableOpacity style={styles.joinButton}>
+            <TouchableOpacity 
+              style={styles.joinButton}
+              onPress={() => Linking.openURL('https://molecule-builder-911c7.web.app/')}
+            >
+                <Text style={styles.joinButtonText}>Join Room</Text>
+            </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.gameCard}>
+        <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1049/1049593.png' }} style={styles.gameImage} />
+        <View style={styles.gameDetails}>
+          <Text style={styles.gameName}>Anatomy VR Labroom</Text>
+          <Text style={styles.gameCategory}>Biology</Text>
+          <Text style={styles.gameDescription}>Explore 3D anatomy models in a virtual lab</Text>
+        </View>
+        <View style={styles.joinContainer}>
+            <Text style={styles.playerCount}>10/20</Text>
+            <TouchableOpacity 
+              style={styles.joinButton}
+              onPress={() => Linking.openURL('https://my-anatomy-vr-2026.web.app/')}
+            >
                 <Text style={styles.joinButtonText}>Join Room</Text>
             </TouchableOpacity>
         </View>

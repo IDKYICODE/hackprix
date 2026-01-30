@@ -5,15 +5,14 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, PlayCircle, BookOpen } from "lucide-react";
 
 const subjectData: Record<string, any> = {
-  math: {
+  // Ensure these keys match the IDs sent from Home.tsx
+  maths: { // Changed from 'math' to 'maths' to match Home.tsx id
     name: "Mathematics",
     icon: "🔢",
     color: "from-blue-500 to-cyan-500",
     topics: [
       { id: 1, title: "Algebra Basics", progress: 100, lessons: 12 },
       { id: 2, title: "Geometry", progress: 75, lessons: 10 },
-      { id: 3, title: "Calculus Intro", progress: 40, lessons: 15 },
-      { id: 4, title: "Statistics", progress: 0, lessons: 8 },
     ],
   },
   physics: {
@@ -22,8 +21,6 @@ const subjectData: Record<string, any> = {
     color: "from-purple-500 to-pink-500",
     topics: [
       { id: 1, title: "Mechanics", progress: 60, lessons: 14 },
-      { id: 2, title: "Thermodynamics", progress: 30, lessons: 10 },
-      { id: 3, title: "Electromagnetism", progress: 0, lessons: 12 },
     ],
   },
   chemistry: {
@@ -32,18 +29,14 @@ const subjectData: Record<string, any> = {
     color: "from-green-500 to-emerald-500",
     topics: [
       { id: 1, title: "Atomic Structure", progress: 90, lessons: 8 },
-      { id: 2, title: "Chemical Bonding", progress: 80, lessons: 10 },
-      { id: 3, title: "Organic Chemistry", progress: 50, lessons: 15 },
     ],
   },
-  biology: {
-    name: "Biology",
-    icon: "🧬",
+  anatomy: { // Added this to match the Anatomy card on Home
+    name: "Anatomy",
+    icon: "🦴",
     color: "from-orange-500 to-red-500",
     topics: [
-      { id: 1, title: "Cell Biology", progress: 70, lessons: 12 },
-      { id: 2, title: "Genetics", progress: 45, lessons: 10 },
-      { id: 3, title: "Evolution", progress: 0, lessons: 8 },
+      { id: 1, title: "Skeletal System", progress: 55, lessons: 10 },
     ],
   },
 };

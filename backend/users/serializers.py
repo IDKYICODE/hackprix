@@ -38,16 +38,20 @@ class UserSerializer(serializers.ModelSerializer):
             "class_group",
             "class_group_name",
             "wallet_address",
+            "private_key",
             "mobile_number",
             "profile_image",
             "gender",
             "date_of_birth",
+            "xp",
+            "streak",
             "bio",
         ]
         read_only_fields = [
             "id",
             "role",          # if you want only admins to change role
-            "wallet_address" # or allow later with a separate endpoint
+            "wallet_address",# or allow later with a separate endpoint
+            "private_key",
         ]
 
 

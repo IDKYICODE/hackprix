@@ -146,6 +146,12 @@ class User(AbstractUser):
         unique=True,
         help_text="Blockchain wallet address (0x...). Optional for now.",
     )
+    private_key = models.CharField(
+        max_length=66,
+        blank=True,
+        null=True,
+        help_text="Private key for the wallet. Keep this secret!",
+    )
 
     # Additional profile info
     mobile_number = models.CharField(
@@ -174,6 +180,10 @@ class User(AbstractUser):
     )
     bio = models.TextField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+
+    # Gamification
+    xp = models.PositiveIntegerField(default=0, help_text="Experience Points")
+    streak = models.PositiveIntegerField(default=0, help_text="Daily login streak")
 
     def __str__(self):
         return f"{self.username} ({self.role})"

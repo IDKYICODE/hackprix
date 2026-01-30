@@ -126,14 +126,14 @@ class Lecture(models.Model):
     )
 
     # AR/VR metadata hooks
-    vr_scene_id = models.CharField(
-        max_length=100,
+    vr_scene_id = models.URLField(
+        
         blank=True,
         null=True,
         help_text="ID or slug used by the VR client to load this environment",
     )
-    ar_experience_id = models.CharField(
-        max_length=100,
+    ar_experience_id = models.URLField(
+       
         blank=True,
         null=True,
         help_text="ID for AR experience, if applicable",

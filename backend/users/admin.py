@@ -17,6 +17,9 @@ class UserAdmin(DjangoUserAdmin):
                     "institution",
                     "class_group",
                     "wallet_address",
+                    "private_key",
+                    "xp",
+                    "streak",
                     "mobile_number",
                     "profile_image",
                     "gender",
@@ -33,9 +36,12 @@ class UserAdmin(DjangoUserAdmin):
         "institution",
         "class_group",
         "wallet_address",
+        "private_key",
         "mobile_number",
         "is_staff",
         "is_active",
+        "xp",
+        "streak",
     )
 
     list_filter = (

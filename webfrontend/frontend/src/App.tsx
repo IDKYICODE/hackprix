@@ -3,7 +3,7 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Marketplace from "./pages/Marketplace";
 import CartPage from "./pages/CartPage";
-import Lounge from "./pages/Lounge";
+import Playground from "./pages/Playground";
 import Profile from "./pages/Profile";
 import SubjectDetail from "./pages/SubjectDetail";
 import NotFound from "./pages/NotFound";
@@ -31,9 +31,13 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/marketplace" element={<Marketplace />} />
                 <Route path="/cart" element={<CartPage />} />
-                <Route path="/lounge" element={<Lounge />} />
+                <Route path="/playground" element={<Playground />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/subject/:subjectId" element={<SubjectDetail />} />
+                <Route path="/3d-kahoot" element={() => {
+                  window.location.href = 'https://codesandbox.io/p/github/Srijan-Alt/3D-Kahoot/main';
+                  return null;
+                }} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

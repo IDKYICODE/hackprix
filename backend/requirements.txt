@@ -6,3 +6,4 @@ drf-yasg
 web3
 django-cors-headers
 Pillow
+pytube

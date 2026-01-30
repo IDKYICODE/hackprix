@@ -4,8 +4,17 @@ from rest_framework import status, permissions, generics
 from rest_framework import filters # Import filters
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from web3 import Web3
 
-from utils.blockchain import execute_marketplace_purchase, get_live_balance
+from utils.blockchain import (
+    get_live_balance, 
+    execute_marketplace_purchase, 
+    get_token_contract, 
+    w3, 
+    MARKET_ADDR,
+    ensure_checksum,
+)
+
 from .models import ProductCategory, Product, Redemption, PointTransaction, Cart, CartItem
 from .serializers import (
     ProductCategorySerializer,
@@ -19,31 +28,30 @@ class BuyItemView(APIView):
 
     def post(self, request):
         user = request.user
-        # In a real app, you'd get this from request.data
+        # Convert address to checksum immediately to satisfy web3.py
+        safe_wallet = ensure_checksum(user.wallet_address)
+        
         item_id = request.data.get('item_id')
         item_cost = 100 # Fixed cost for demo
         
-        if not user.wallet_address:
-            return Response({"error": "No wallet linked"}, status=400)
+        if not safe_wallet:
+            return Response({"error": "Invalid or missing wallet address"}, status=400)
 
-        # 1. Check Blockchain balance before trying to buy
-        current_balance = get_live_balance(user.wallet_address)
+        # 1. Check Blockchain balance
+        current_balance = get_live_balance(safe_wallet)
         if current_balance < item_cost:
             return Response({"error": "Insufficient EDU balance"}, status=400)
 
         # 2. Execute Admin-Mediated Purchase
-        tx_hash, error = execute_marketplace_purchase(user.wallet_address, item_cost)
+        tx_hash, error = execute_marketplace_purchase(safe_wallet, item_cost)
 
         if not error:
-            # Here you would typically create a 'PurchaseHistory' record in Django
             return Response({
                 "message": "Item purchased successfully!",
                 "tx_hash": tx_hash
             }, status=status.HTTP_200_OK)
         else:
             return Response({"error": f"Purchase failed: {error}"}, status=500)
-
-
 # --- Product Categories ---
 class ProductCategoryListAPIView(generics.ListAPIView):
     queryset = ProductCategory.objects.filter(is_active=True)
@@ -136,67 +144,98 @@ class RedeemCartView(APIView):
 
     def post(self, request):
         user = request.user
+        
+        # 1. Validation and Address Preparation
+        db_address = user.wallet_address
+        db_pvt_key = user.private_key # Consider moving this to a secure vault
+
+        if not db_address or not db_pvt_key:
+            return Response({"error": "Wallet configuration incomplete."}, status=400)
+
+        try:
+            student_address = Web3.to_checksum_address(db_address)
+            market_address = Web3.to_checksum_address(MARKET_ADDR)
+        except Exception as e:
+            return Response({"error": f"Invalid Address: {str(e)}"}, status=400)
+
         cart, _ = Cart.objects.get_or_create(user=user)
-        cart_items = cart.items.all()
-
+        cart_items = cart.items.select_related('product').all()
+        
         if not cart_items:
-            return Response({"error": "Your cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Your cart is empty."}, status=400)
 
-        if not user.wallet_address:
-            return Response({"error": "No blockchain wallet linked."}, status=status.HTTP_400_BAD_REQUEST)
+        total_points_cost = sum(item.product.points_price * item.quantity for item in cart_items)
+        amount_in_wei = int(total_points_cost * 10**18)
 
-        total_points_cost = 0
-        with transaction.atomic():
-            # First pass: check stock and calculate total cost
-            for item in cart_items:
-                if item.product.stock is not None and item.product.stock < item.quantity:
-                    return Response({"error": f"Not enough stock for {item.product.name}"}, status=status.HTTP_400_BAD_REQUEST)
-                total_points_cost += item.product.points_price * item.quantity
+        # 2. Blockchain Pre-check
+        current_balance = get_live_balance(student_address)
+        if current_balance < total_points_cost:
+            return Response({"error": f"Insufficient balance. Need {total_points_cost} EDU."}, status=400)
 
-            # Check Blockchain Balance
-            current_balance = get_live_balance(user.wallet_address)
-            if current_balance < total_points_cost:
-                return Response({"error": "Insufficient EDU balance."}, status=status.HTTP_400_BAD_REQUEST)
-            print("NOt upto here")
-            # Execute single Blockchain Purchase for the total amount
-            tx_hash, error = execute_marketplace_purchase(user.wallet_address, total_points_cost)
+        try:
+            with transaction.atomic():
+                # --- Step A: Approval (Student Signs) ---
+                token_contract = get_token_contract()
+                allowance = token_contract.functions.allowance(student_address, market_address).call()
+                
+                if allowance < amount_in_wei:
+                    approve_tx = token_contract.functions.approve(
+                        market_address, amount_in_wei
+                    ).build_transaction({
+                        'from': student_address, 
+                        'nonce': w3.eth.get_transaction_count(student_address),
+                        'gas': 100000,
+                        'gasPrice': w3.eth.gas_price
+                    })
+                    
+                    signed_approve = w3.eth.account.sign_transaction(approve_tx, db_pvt_key)
+                    tx_app_hash = w3.eth.send_raw_transaction(signed_approve.raw_transaction)
+                    # Note: In production, use Celery to wait for this instead of blocking
+                    w3.eth.wait_for_transaction_receipt(tx_app_hash)
 
-            if error:
-                print("Error occured here")
-                return Response({"error": f"Blockchain transaction failed: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+                # --- Step B: Purchase Execution ---
+                tx_hash, error = execute_marketplace_purchase(student_address, total_points_cost)
+                if error:
+                    raise Exception(f"Blockchain execution error: {error}")
 
-            # Second pass: Create redemption records and update stock
-            for item in cart_items:
-                Redemption.objects.create(
+                # --- Step C: DB Inventory and Logs ---
+                for item in cart_items:
+                    # Use select_for_update to prevent race conditions on stock
+                    product = Product.objects.select_for_update().get(id=item.product.id)
+                    
+                    if product.stock is not None:
+                        if product.stock < item.quantity:
+                            raise Exception(f"Insufficient stock for {product.name}")
+                        product.stock -= item.quantity
+                        product.save(update_fields=["stock"])
+
+                    # Create Redemption Record
+                    Redemption.objects.create(
+                        user=user,
+                        product=product,
+                        quantity=item.quantity,
+                        points_spent=product.points_price * item.quantity,
+                        status="completed",
+                        tx_hash=tx_hash,
+                    )
+
+                # Create Audit Log entry
+                PointTransaction.objects.create(
                     user=user,
-                    product=item.product,
-                    quantity=item.quantity,
-                    points_spent=item.product.points_price * item.quantity,
-                    status="completed",
-                    tx_hash=tx_hash, # Use the same hash for all redemptions in this batch
-                    shipping_address=user.address,
+                    tx_type="spend",
+                    source="redemption",
+                    amount=total_points_cost,
+                    description=f"Marketplace purchase: {len(cart_items)} items",
+                    on_chain_tx_hash=tx_hash
                 )
-                if item.product.stock is not None:
-                    item.product.stock -= item.quantity
-                    item.product.save(update_fields=["stock"])
 
-            # Record a single PointTransaction for the whole cart
-            PointTransaction.objects.create(
-                user=user,
-                tx_type="spend",
-                source="redemption",
-                amount=total_points_cost,
-                description=f"Redeemed {cart_items.count()} items from cart.",
-                on_chain_tx_hash=tx_hash,
-            )
+                # Clear Cart
+                cart_items.delete()
 
-            # Clear the cart
-            cart_items.delete()
+            return Response({"message": "Redemption successful!", "tx_hash": tx_hash}, status=200)
 
-        return Response({"message": "Cart redeemed successfully!", "tx_hash": tx_hash}, status=status.HTTP_200_OK)
-
-
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 # --- User Redemption History ---
 class UserRedemptionHistoryAPIView(generics.ListAPIView):
     serializer_class = RedemptionSerializer
