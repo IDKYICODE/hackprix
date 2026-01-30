@@ -6,7 +6,7 @@ const BottomNav = () => {
     { icon: Home, label: "Home", path: "/" },
     { icon: ShoppingBag, label: "Marketplace", path: "/marketplace" },
     { icon: Gamepad2, label: "Playground", path: "/playground" },
-    { icon: Box, label: "Lounge", path: "/3d-kahoot" },
+    { icon: Box, label: "Lounge", path: "/lounge" },
     { icon: User, label: "Profile", path: "/profile" },
   ];
 

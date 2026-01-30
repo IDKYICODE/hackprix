@@ -213,3 +213,34 @@ export async function fetchProducts() {
     return data;
   }
   
+
+// Inside lib/authClient.ts
+
+export async function sendChatMessage(message: string, history: any[]) {
+  const { data } = await api.post("/lectures/chat/", {
+    message: message,
+    history: history,
+  });
+  return data;
+}
+
+// lib/authClient.ts
+
+// ... existing axios 'api' instance ...
+
+export async function generateQuizQuestions(subject: string) {
+  const { data } = await api.get(`/lectures/multi-quiz/generate/${subject}/`);
+  return data;
+}
+
+export async function submitQuizScore(subject: string, score: number) {
+  const { data } = await api.post("/lectures/multi-quiz/submit-score/", {
+    subject,
+    score,
+  });
+  return data;
+}
+
+/** * Note: Real-time Socket interactions don't usually go through the REST client, 
+ * but you'll use the 'accessToken' from here to authenticate the socket.
+ */

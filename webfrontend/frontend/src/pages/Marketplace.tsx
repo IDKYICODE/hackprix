@@ -2,30 +2,43 @@ import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Coins, ShoppingCart, Loader2 } from "lucide-react";
+import { Coins, ShoppingCart, Loader2, Zap, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { fetchProducts, addToCart } from "@/lib/authClient";
+import { fetchProducts, addToCart, fetchWalletInfo } from "@/lib/authClient";
 import { Product } from "@/types";
+
+type WalletInfo = {
+  address: string | null;
+  balance: number;
+  symbol: string;
+};
 
 const Marketplace = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [wallet, setWallet] = useState<WalletInfo | null>(null);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const loadMarketplaceData = async () => {
       try {
         setLoading(true);
-        const data = await fetchProducts();
-        setProducts(data);
+        // Fetch products and wallet info in parallel
+        const [productsData, walletData] = await Promise.all([
+          fetchProducts(),
+          fetchWalletInfo()
+        ]);
+        setProducts(productsData);
+        setWallet(walletData);
       } catch (error) {
-        toast.error("Failed to fetch products.");
+        console.error("Error loading marketplace:", error);
+        toast.error("Failed to fetch marketplace data.");
       } finally {
         setLoading(false);
       }
     };
-    loadProducts();
+    loadMarketplaceData();
   }, []);
 
   const handleAddToCart = async (productId: number) => {
@@ -39,62 +52,95 @@ const Marketplace = () => {
 
   return (
     <div className="pb-20 px-4 pt-6 max-w-lg mx-auto min-h-screen">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      {/* Wallet Header (Same logic as Home) */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gradient mb-2">Marketplace</h1>
-          <p className="text-muted-foreground">Spend your EduCoins wisely</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Marketplace</h1>
+          <p className="text-sm text-muted-foreground italic font-medium uppercase tracking-wider">Redeem your Rewards</p>
         </div>
-        <NavLink to="/cart" className="text-black/80">
-          <ShoppingCart className="w-6 h-6" />
+        <NavLink to="/cart">
+          <Button variant="outline" size="icon" className="relative border-accent/20 hover:bg-accent/10">
+            <ShoppingCart className="w-5 h-5 text-accent" />
+            <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-background animate-pulse">
+              !
+            </span>
+          </Button>
         </NavLink>
       </div>
 
-      {/* Wallet */}
-      <Card className="p-4 mb-6 shadow-card gradient-neon">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-              <Coins className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm text-white/80">Your Balance</p>
-              <p className="text-2xl font-bold text-white">{user?.edu_coins ?? 0}</p>
-            </div>
+      {/* Wallet Info Card (Same logic as Home) */}
+      <Card className="p-5 mb-8 shadow-card gradient-card border-accent/20">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-full border border-accent/10">
+            <Zap className="w-3.5 h-3.5 text-accent fill-accent" />
+            <span className="text-[10px] font-black text-accent uppercase tracking-widest">Premium Rewards</span>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+             <Wallet className="w-3 h-3" />
+             <span className="text-[8px] font-mono opacity-50 uppercase tracking-tighter">
+                {wallet?.address ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}` : 'No Wallet Connected'}
+             </span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Available Balance</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-black text-foreground tracking-tighter italic">
+               {wallet?.balance ?? 0}
+            </span>
+            <span className="text-sm font-black text-accent uppercase italic tracking-widest">
+               {wallet?.symbol ?? 'EDU'}
+            </span>
           </div>
         </div>
       </Card>
 
-      {/* Items Grid */}
+      {/* Products Section */}
+      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-4 flex items-center gap-2 px-1">
+        <Coins className="w-3 h-3" /> Featured Items
+      </h2>
+
       {loading ? (
-        <div className="flex justify-center mt-20">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-8 h-8 text-accent animate-spin" />
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Browsing Inventory...</p>
         </div>
+      ) : products.length === 0 ? (
+        <Card className="p-10 text-center border-dashed border-2 bg-transparent border-muted-foreground/20">
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">The shop is currently empty.</p>
+        </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {products.map((item) => (
             <Card
               key={item.id}
-              className="p-4 shadow-card gradient-card border-border hover:border-accent/50 transition-all"
+              className="p-4 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] border-accent/10 bg-card/50 backdrop-blur-sm shadow-card"
             >
               <div className="flex gap-4">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-accent/20 to-secondary/20 flex items-center justify-center text-3xl flex-shrink-0">
-                  {/* Displaying a placeholder if no thumbnail */}
-                  {item.thumbnail ? <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover rounded-xl" /> : '🛍️'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground">{item.name}</h3>
-                    <div className="flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full flex-shrink-0">
-                      <Coins className="w-4 h-4 text-secondary" />
-                      <span className="text-sm font-bold text-secondary">{item.points_price}</span>
+                <div className="w-24 h-24 rounded-xl bg-secondary/10 flex items-center justify-center text-3xl flex-shrink-0 border border-secondary/20 overflow-hidden">
+                  {item.thumbnail ? (
+                    <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="p-4 bg-gradient-to-br from-secondary/20 to-accent/10 w-full h-full flex items-center justify-center italic font-black text-secondary/40 text-xl">
+                       ITEM
                     </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-bold text-foreground text-lg tracking-tight truncate leading-tight uppercase italic">{item.name}</h3>
+                      <div className="flex items-center gap-1 bg-secondary/10 px-2.5 py-1 rounded-lg flex-shrink-0 border border-secondary/20 shadow-sm">
+                        <Coins className="w-3.5 h-3.5 text-secondary fill-secondary/20" />
+                        <span className="text-sm font-black text-secondary tracking-tighter">{item.points_price}</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">{item.category_name}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.description}</p>
                   </div>
-                  <p className="text-xs text-accent mb-1">{item.category_name}</p>
-                  <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
                   <Button
                     size="sm"
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground glow-cyan"
+                    className="w-full mt-3 bg-foreground text-background hover:bg-foreground/90 font-black uppercase tracking-widest text-[10px] h-9 shadow-lg"
                     onClick={() => handleAddToCart(item.id)}
                   >
                     Add to Cart

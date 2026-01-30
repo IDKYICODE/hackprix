@@ -5,12 +5,15 @@ from .views import (
     CourseListCreateView,
     LectureListCreateView,
     LectureDetailView,
+    MultiPlayerQuizView,
     ResourceListView,
     CompleteQuizView,
     RewardTimeView,
     CourseDetailByTitleView,  # New import
     LectureListByCourseTitleView, # New import
     ResourceListByCourseTitleView, # New import
+    ChatBotView 
+
 )
 
 urlpatterns = [
@@ -41,4 +44,8 @@ urlpatterns = [
     ),
     path('quiz/<int:quiz_id>/complete/', CompleteQuizView.as_view(), name='quiz-complete'),
     path('reward-time/', RewardTimeView.as_view(), name='reward-time'),
+    path('chat/',ChatBotView.as_view(), name='chatbot'),
+    path('multi-quiz/generate/<str:subject>/', MultiPlayerQuizView.as_view(),name = 'generate-quiz'),
+   
+    path('multi-quiz/submit-score/', MultiPlayerQuizView.as_view(), name='submit-quiz-score'),
 ]

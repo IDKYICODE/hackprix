@@ -62,7 +62,7 @@ const vrRooms = [
   }
 ];
 
-const Lounge = () => {
+const Playground = () => {
   const navigate = useNavigate();
   const { fetchUser } = useAuth();
 
@@ -238,4 +238,4 @@ const Lounge = () => {
   );
 };
 
-export default Lounge;
+export default Playground;

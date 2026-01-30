@@ -11,7 +11,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
-
+import Lounge from "./pages/Lounge";
+import QuizRoom from "./pages/QuizRoom";
 const App = () => (
   <BrowserRouter>
     <Routes>
@@ -32,12 +33,14 @@ const App = () => (
                 <Route path="/marketplace" element={<Marketplace />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/playground" element={<Playground />} />
+                <Route path="/lounge" element={<Lounge />} />
+                <Route path="/quiz-room/:subjectId" element={<QuizRoom />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/subject/:subjectId" element={<SubjectDetail />} />
-                <Route path="/3d-kahoot" element={() => {
+               {/* <Route path="/3d-kahoot" element={() => {
                   window.location.href = 'https://codesandbox.io/p/github/Srijan-Alt/3D-Kahoot/main';
                   return null;
-                }} />
+                }} />*/}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

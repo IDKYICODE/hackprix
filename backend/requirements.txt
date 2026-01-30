@@ -7,3 +7,5 @@ web3
 django-cors-headers
 Pillow
 pytube
+djangorestframework-simplejwt
+google-generativeai

@@ -7,6 +7,12 @@ from rest_framework import status
 from rest_framework.views import APIView
 from django.utils import timezone
 from datetime import timedelta
+import os
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from .models import Course, Lecture, LearningResource
 from .serializers import (
@@ -14,13 +20,17 @@ from .serializers import (
     LectureSerializer,
     LearningResourceSerializer,
 )
-from .blockchain_utils import award_edutokens
+from utils.blockchain import award_edutokens, ensure_checksum
 from .models import Quiz, QuizSubmission
 
 
 # -------------------
 # Reward & XP
 # -------------------
+
+# lectures/views.py
+
+# lectures/views.py
 
 class RewardTimeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -29,61 +39,46 @@ class RewardTimeView(APIView):
         user = request.user
         duration_seconds = request.data.get("duration", 0)
 
-        # 1. Basic Validation
         if not isinstance(duration_seconds, int) or duration_seconds <= 15:
-            return Response({"message": "Session too short for rewards."}, status=200)
+            return Response({"message": "Session too short."}, status=200)
 
-        # 2. Security Cap: Max 1 hour (3600s) to prevent "AFK" farming
-        MAX_SECONDS = 3600
-        reward_duration = min(duration_seconds, MAX_SECONDS)
-
-        # 3. Reward Logic: 5 tokens per minute
+        reward_duration = min(duration_seconds, 3600)
         tokens_to_award = (reward_duration // 60) * 5
-        xp_to_award = (reward_duration // 60) * 50 # 50 XP per minute
+        xp_to_award = (reward_duration // 60) * 50
 
+        # Save XP first so they always get it
         user.xp += xp_to_award
-
-        # 4. Streak Logic
-        today = timezone.now().date()
-        if user.last_login:
-            last_login_date = user.last_login.date()
-            if last_login_date == today - timedelta(days=1):
-                user.streak += 1
-            elif last_login_date < today - timedelta(days=1):
-                user.streak = 1
-        else:
-            user.streak = 1
-
-        user.last_login = timezone.now()
         user.save()
 
-        # 5. Blockchain Award
         tx_hash = None
-        error = None
-        if user.wallet_address and tokens_to_award > 0:
-            tx_hash, error = award_edutokens(user.wallet_address, tokens_to_award)
-            if error:
-                print(f"Blockchain Error: {error}")
-                # Don't award tokens if there's an error
-                tokens_to_award = 0
-
-        message = "Reward processed!"
-        if xp_to_award > 0 and tokens_to_award > 0:
-            message = f"You earned {xp_to_award} XP and {tokens_to_award} EDU!"
-        elif xp_awarded > 0: # Corrected from xp_awarded to xp_to_award
-            message = f"You earned {xp_to_award} XP!"
-        elif tokens_to_award > 0:
-            message = f"You earned {tokens_to_award} EDU!"
-
-
+        blockchain_error = None
+        print('error before wallet')
+        # Check for wallet first
+        if not user.wallet_address:
+            return Response({
+                "message": f"Earned {xp_to_award} XP! Add a wallet to earn EDU tokens.",
+                "xp_awarded": xp_to_award,
+                "tokens_awarded": 0
+            }, status=200)
+        print('awarding tokens')
+        if tokens_to_award > 0:
+            tx_hash, blockchain_error = award_edutokens(ensure_checksum(user.wallet_address), tokens_to_award)
+            
+            if blockchain_error:
+                # Still show XP but explain the token delay
+                return Response({
+                    "message": f"Earned {xp_to_award} XP! Token transfer pending: {blockchain_error}",
+                    "xp_awarded": xp_to_award,
+                    "tokens_awarded": 0,
+                    "error": blockchain_error
+                }, status=200)
+        print("tokens awarded:", tokens_to_award, "tx_hash:", tx_hash )
         return Response({
-            "message": message,
+            "message": f"You earned {xp_to_award} XP and {tokens_to_award} EDU!",
             "xp_awarded": xp_to_award,
             "tokens_awarded": tokens_to_award,
-            "streak": user.streak,
             "tx_hash": tx_hash,
         }, status=200)
-
 
 # -------------------
 # Courses
@@ -346,3 +341,145 @@ class CompleteQuizView(APIView):
                 return Response({"error": f"Blockchain failed: {error}"}, status=500)
         
         return Response({"message": "Quiz saved, but no wallet linked to award tokens."}, status=200)
+    
+
+
+
+# -------------------
+# AI Chatbot Integration
+# -------------------
+
+class ChatBotView(APIView):
+    """
+    POST /api/lectures/chat/
+    Body: { "message": "What is photosynthesis?", "history": [...] }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # 1. Initialize Client
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                return Response({"error": "API Key not configured"}, status=500)
+            
+            client = genai.Client(api_key=api_key)
+
+            # 2. Get Data
+            user_message = request.data.get("message")
+            history = request.data.get("history", [])
+
+            if not user_message:
+                return Response({"error": "No message provided"}, status=400)
+
+            # 3. Format History for Gemini SDK
+            chat_history = []
+            for msg in history:
+                role = "user" if msg.get('sender') == 'user' else "model"
+                chat_history.append(types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(text=msg.get('text'))]
+                ))
+
+            # 4. Create Session and Generate Response
+            chat = client.chats.create(
+                model="gemini-2.0-flash",
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    max_output_tokens=2048,
+                    system_instruction=(
+                        "You are a helpful and patient educational support bot. "
+                        "Your goal is to help students understand concepts by guiding them "
+                        "rather than just giving direct answers. Keep responses concise and encouraging."
+                    )
+                ),
+                history=chat_history
+            )
+
+            response = chat.send_message(user_message)
+            
+            return Response({
+                "response": response.text
+            }, status=200)
+
+        except Exception as e:
+            print(f"Chatbot Error: {e}")
+            return Response({"error": str(e)}, status=500)
+        
+
+
+import json
+import random
+
+class MultiPlayerQuizView(APIView):
+    """
+    Pure Django logic for a Multiplayer Quiz.
+    Generates questions via Gemini and handles score submission.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, subject):
+        """
+        Endpoint to get 5 AI-generated questions for a subject.
+        URL: /api/lectures/multi-quiz/generate/<subject>/
+        """
+        try:
+            api_key = os.getenv("GEMINI_API_KEY")
+            client = genai.Client(api_key=api_key)
+
+            # Strict prompt for structured data
+            prompt = f"""Generate 5 multiple-choice quiz questions about {subject}.
+            Format requirements:
+            - Return ONLY a JSON list of objects.
+            - Each object must have: "q" (string), "options" (list of 4 strings), "correct" (int 0-3).
+            - Difficulty: Undergraduate level."""
+
+            # Use response_mime_type to force Gemini to return pure JSON
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.8,
+                )
+            )
+
+            # Because we used JSON mode, we don't need to strip ```json anymore
+            questions = json.loads(response.text)
+
+            # Shuffle options for variety while keeping track of the correct answer
+            for item in questions:
+                options = item['options']
+                correct_answer = options[item['correct']]
+                random.shuffle(options)
+                item['correct'] = options.index(correct_answer)
+
+            return Response({
+                "subject": subject,
+                "questions": questions
+            }, status=200)
+
+        except Exception as e:
+            # This handles the 500 error and provides feedback
+            print(f"Quiz Error: {str(e)}")
+            return Response(
+                {"error": "Failed to generate questions. Ensure your API key is valid."},
+                status=500
+            )
+
+    def post(self, request):
+        """
+        Saves user score and awards XP.
+        URL: /api/lectures/multi-quiz/submit-score/
+        """
+        user = request.user
+        score = request.data.get("score", 0)
+        
+        # Logic to update user XP (from your existing user model)
+        user.xp += int(score)
+        user.save()
+
+        return Response({
+            "message": f"Quiz complete! {score} XP added to your profile.",
+            "total_xp": user.xp
+        }, status=200)
