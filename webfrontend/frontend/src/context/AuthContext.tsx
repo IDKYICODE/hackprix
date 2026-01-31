@@ -13,6 +13,7 @@ type User = {
   institution_name?: string | null;
   xp?: number;
   edu_coins?: number;
+  wallet_address?: string | null;
 };
 
 

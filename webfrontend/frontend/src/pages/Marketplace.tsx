@@ -6,7 +6,7 @@ import { Coins, ShoppingCart, Loader2, Zap, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { fetchProducts, addToCart, fetchWalletInfo } from "@/lib/authClient";
-import { Product } from "@/types";
+import type { Product } from "@/types";
 
 type WalletInfo = {
   address: string | null;
@@ -15,7 +15,7 @@ type WalletInfo = {
 };
 
 const Marketplace = () => {
-  const { user } = useAuth();
+  const {  } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);

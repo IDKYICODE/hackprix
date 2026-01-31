@@ -2,7 +2,7 @@
 
 import axios, { AxiosError } from "axios";
 
-const API_URL = "/api"; // Use relative URL for proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api'; // Use env var or relative URL for dev proxy
 
 // 🔑 Single source of truth for keys
 const ACCESS_KEY = "accessToken";

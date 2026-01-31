@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Box, Trophy, Users, Zap, Loader2, Radio, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { generateQuizQuestions, api } from "@/lib/authClient"; // Added api
+import { generateQuizQuestions, api } from "@/lib/authClient";
 import { App } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ const Lounge = () => {
   const navigate = useNavigate();
   const { fetchUser } = useAuth();
   const [loadingSubject, setLoadingSubject] = useState<string | null>(null);
+  const appStateListenerRef = useRef<PluginListenerHandle | null>(null);
 
   // --- START REWARD LOGIC ---
   useEffect(() => {
@@ -56,14 +58,17 @@ const Lounge = () => {
       }
     };
 
-    const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) processReward();
-    });
+    const setupListeners = async () => {
+      appStateListenerRef.current = await App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) processReward();
+      });
+    };
+    setupListeners();
 
     window.addEventListener("focus", processReward);
 
     return () => {
-      appStateListener.remove();
+      appStateListenerRef.current?.remove();
       window.removeEventListener("focus", processReward);
     };
   }, [fetchUser]);

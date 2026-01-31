@@ -16,58 +16,22 @@
 
 import cn from "classnames";
 import { memo, useEffect, useRef, useState } from "react";
-import type { ReactNode, RefObject } from "react";
+import type { RefObject } from "react";
 import { useLiveAPIContext } from "../../context/LiveAPIContext";
-import type { UseMediaStreamResult } from "../../hooks/use-media-stream-mux";
-import { useScreenCapture } from "../../hooks/use-screen-capture";
-import { useWebcam } from "../../hooks/use-webcam";
 import { AudioRecorder } from "../../lib/audio-recorder";
 import AudioPulse from "../audio-pulse/AudioPulse";
 import "./control-tray.scss";
 
 export type ControlTrayProps = {
   videoRef: RefObject<HTMLVideoElement | null>;
-  children?: ReactNode;
-  supportsVideo: boolean;
-  onVideoStreamChange?: (stream: MediaStream | null) => void;
-  enableEditingSettings?: boolean;
+  // onVideoStreamChange?: (stream: MediaStream | null) => void;
 };
-
-type MediaStreamButtonProps = {
-  isStreaming: boolean;
-  onIcon: string;
-  offIcon: string;
-  start: () => Promise<any>;
-  stop: () => any;
-};
-
-/**
- * button used for triggering webcam or screen-capture
-//  */
-// const MediaStreamButton = memo(
-//   ({ isStreaming, onIcon, offIcon, start, stop }: MediaStreamButtonProps) =>
-//     isStreaming ? (
-//       <button className="action-button" onClick={stop}>
-//         <span className="material-symbols-outlined">{onIcon}</span>
-//       </button>
-//     ) : (
-//       <button className="action-button" onClick={start}>
-//         <span className="material-symbols-outlined">{offIcon}</span>
-//       </button>
-//     )
-// );
 
 function ControlTray({
   videoRef,
-  children,
-  onVideoStreamChange = () => {},
-  supportsVideo,
-  enableEditingSettings, // Future use for settings dialog
-}: ControlTrayProps) {
-  const videoStreams = [useWebcam(), useScreenCapture()];
-  const [activeVideoStream, setActiveVideoStream] =
-    useState<MediaStream | null>(null);
-  const [webcam, screenCapture] = videoStreams;
+}: // onVideoStreamChange = () => {},
+ControlTrayProps) {
+  const [activeVideoStream] = useState<MediaStream | null>(null);
   const [inVolume, setInVolume] = useState(0);
   const [audioRecorder] = useState(() => new AudioRecorder());
   const [muted, setMuted] = useState(false);
@@ -144,20 +108,6 @@ function ControlTray({
     };
   }, [connected, activeVideoStream, client, videoRef]);
 
-  //handler for swapping from one video-stream to the next
-  const changeStreams = (next?: UseMediaStreamResult) => async () => {
-    if (next) {
-      const mediaStream = await next.start();
-      setActiveVideoStream(mediaStream);
-      onVideoStreamChange(mediaStream);
-    } else {
-      setActiveVideoStream(null);
-      onVideoStreamChange(null);
-    }
-
-    videoStreams.filter((msr) => msr !== next).forEach((msr) => msr.stop());
-  };
-
   return (
     <section className="control-tray">
       <canvas style={{ display: "none" }} ref={renderCanvasRef} />
@@ -176,26 +126,6 @@ function ControlTray({
         <div className="action-button no-action outlined">
           <AudioPulse volume={volume} active={connected} hover={false} />
         </div>
-
-        {/* {supportsVideo && (
-          <>
-            <MediaStreamButton
-              isStreaming={screenCapture.isStreaming}
-              start={changeStreams(screenCapture)}
-              stop={changeStreams()}
-              onIcon="cancel_presentation"
-              offIcon="present_to_all"
-            />
-            <MediaStreamButton
-              isStreaming={webcam.isStreaming}
-              start={changeStreams(webcam)}
-              stop={changeStreams()}
-              onIcon="videocam_off"
-              offIcon="videocam"
-            />
-          </>
-        )} */}
-        {/* {children} */}
       </nav>
 
       <div className={cn("connection-container", { connected })}>
@@ -212,7 +142,6 @@ function ControlTray({
         </div>
         <span className="text-indicator">Streaming</span>
       </div>
-      {/* {enableEditingSettings ? <SettingsDialog /> : ""} */}
     </section>
   );
 }

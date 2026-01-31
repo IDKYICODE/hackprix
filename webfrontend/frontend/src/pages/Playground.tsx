@@ -1,11 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Users, Play, Clock, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import { api } from "../lib/authClient";
 import { App } from '@capacitor/app';
+import type { PluginListenerHandle } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { useAuth } from "@/context/AuthContext";
 
@@ -63,8 +63,9 @@ const vrRooms = [
 ];
 
 const Playground = () => {
-  const navigate = useNavigate();
+
   const { fetchUser } = useAuth();
+  const appStateListenerRef = useRef<PluginListenerHandle | null>(null);
 
   useEffect(() => {
     const processReward = async () => {
@@ -119,17 +120,22 @@ const Playground = () => {
     };
 
     // Mobile: Fires when returning to the app from the In-App Browser
-    const appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        processReward();
-      }
-    });
+    const setupListeners = async () => {
+        appStateListenerRef.current = await App.addListener('appStateChange', ({ isActive }) => {
+            if (isActive) {
+              processReward();
+            }
+        });
+    };
+    setupListeners();
 
     // Web: Fires when the browser tab regains focus
     window.addEventListener("focus", processReward);
 
     return () => {
-      appStateListener.remove();
+      if (appStateListenerRef.current) {
+        appStateListenerRef.current.remove();
+      }
       window.removeEventListener("focus", processReward);
     };
   }, [fetchUser]);

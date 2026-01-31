@@ -15,7 +15,7 @@ import {
   clearCart,
   redeemCart,
 } from "@/lib/authClient";
-import { Cart, CartItem as CartItemType } from "@/types";
+import type { Cart, CartItem as CartItemType } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Zap, Coins, Flame, Star, Bone } from "lucide-react";
+import { Zap, Coins, Flame, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";

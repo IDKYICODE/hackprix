@@ -71,3 +71,19 @@ export default defineConfig([
   },
 ])
 ```
+
+---
+
+## API base URL (environment-aware) 🔧
+
+This project reads the backend base URL from the `VITE_API_URL` environment variable at build time.
+
+- Development: use `VITE_API_URL=/api` so the Vite dev server proxy forwards `/api/*` to your backend.
+- Production: set `VITE_API_URL` to your deployed backend, e.g. `https://api.example.com/api`.
+
+Files created:
+- `.env.development` (dev: `VITE_API_URL=/api`)
+- `.env.production` (prod: `VITE_API_URL=https://api.example.com/api`)
+- `.env.sample` (template)
+
+You can modify or override these values per environment before building.

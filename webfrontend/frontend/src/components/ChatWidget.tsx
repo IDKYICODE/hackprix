@@ -1,9 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaCommentDots, FaPaperPlane, FaTimes, FaRobot, FaMicrophone } from 'react-icons/fa';
-import { LiveAPIProvider } from "../context/LiveAPIContext";
-import ControlTray from "./control-tray/ControlTray";
-import cn from "classnames";
-import type { LiveClientOptions } from "../types";
 
 // Import the authorized api instance from your auth client
 import { api } from '../lib/authClient';
@@ -18,19 +14,62 @@ const ChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showVoiceComponent, setShowVoiceComponent] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "Hi! I'm your educational assistant. How can I help you learn today?", sender: 'bot' }
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const toggleChat = () => setIsOpen(!isOpen);
 
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => {
+        console.log("Speech recognition started");
+        setIsListening(true);
+      };
+
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        setInput(finalTranscript + interimTranscript);
+      };
+
+      recognitionRef.current.onend = () => {
+        console.log("Speech recognition ended");
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+    }
+  }, []);
+
   const handleVoiceClick = () => {
-    setShowVoiceComponent(!showVoiceComponent);
+    if (recognitionRef.current) {
+        if (isListening) {
+            recognitionRef.current.stop();
+        } else {
+            recognitionRef.current.start();
+        }
+    }
   };
 
   const scrollToBottom = () => {
@@ -53,13 +92,11 @@ const ChatWidget: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Format history similar to how you fetch data in Marketplace
       const history = messages.slice(1).map(msg => ({
         text: msg.text,
         sender: msg.sender
       }));
       
-      // Use the authorized api.post so tokens are handled automatically
       const response = await api.post("/lectures/chat/", {
         message: userMsg.text,
         history: history,
@@ -87,11 +124,6 @@ const ChatWidget: React.FC = () => {
     }
   };
 
-  const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-  const apiOptions: LiveClientOptions = {
-    apiKey: API_KEY || "",
-  };
-
   return (
     <div className="fixed bottom-20 right-4 z-[60] flex flex-col items-end sm:bottom-20 sm:right-6">
       {isOpen && (
@@ -102,7 +134,7 @@ const ChatWidget: React.FC = () => {
               <h3 className="font-semibold">EduSupport</h3>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={handleVoiceClick} className="text-white hover:text-gray-200" title="Voice Mode">
+              <button onClick={handleVoiceClick} className={`text-white hover:text-gray-200 ${isListening ? 'animate-pulse' : ''}`} title="Voice Mode">
                 <FaMicrophone />
               </button>
               <button onClick={toggleChat} className="text-white hover:text-gray-200">
@@ -112,34 +144,6 @@ const ChatWidget: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-            {showVoiceComponent ? (
-              <div className="h-full w-full bg-white rounded-lg overflow-hidden relative">
-                <LiveAPIProvider options={apiOptions}>
-                  <div className="streaming-console h-full relative">
-                    <main className="h-full flex flex-col relative">
-                      <div className="main-app-area flex-1 relative">
-                        <video
-                          className={cn("stream w-full h-full object-cover", {
-                            hidden: !videoRef.current || !videoStream,
-                          })}
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                        />
-                      </div>
-                      <div className="relative">
-                        <ControlTray
-                          videoRef={videoRef}
-                          supportsVideo={true}
-                          onVideoStreamChange={setVideoStream}
-                          enableEditingSettings={true}
-                        />
-                      </div>
-                    </main>
-                  </div>
-                </LiveAPIProvider>
-              </div>
-            ) : (
               <>
                 {messages.map((msg) => (
                   <div
@@ -164,19 +168,24 @@ const ChatWidget: React.FC = () => {
                     </div>
                   </div>
                 )}
+                {isListening && (
+                  <div className="flex justify-center">
+                    <div className="bg-white text-gray-500 shadow-sm border border-gray-100 rounded-lg px-4 py-2 text-sm">
+                      Listening...
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </>
-            )}
           </div>
 
-          {!showVoiceComponent && (
             <form onSubmit={handleSend} className="border-t border-gray-200 bg-white p-3">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask a question..."
+                  placeholder={isListening ? "Listening..." : "Ask a question..."}
                   disabled={isLoading}
                   className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
                 />
@@ -189,7 +198,6 @@ const ChatWidget: React.FC = () => {
                 </button>
               </div>
             </form>
-          )}
         </div>
       )}
 

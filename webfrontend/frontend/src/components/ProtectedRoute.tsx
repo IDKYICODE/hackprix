@@ -2,9 +2,9 @@ import { useAuth } from "../context/AuthContext";
 import { Navigate, Outlet } from "react-router-dom";
 
 const ProtectedRoute = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     // Optional: Show a loading spinner
     return <div>Loading...</div>;
   }
