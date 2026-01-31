@@ -15,6 +15,12 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+import os
+from dotenv import load_dotenv
+from urllib.parse import urlparse
+
+# Load environment variables from .env
+load_dotenv()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -93,12 +99,21 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Parse DATABASE_URL like: postgresql://USER:PASS@HOST:PORT/NAME
+url = urlparse(DATABASE_URL)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+'default': {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': url.path[1:],
+    'USER': url.username,
+    'PASSWORD': url.password,
+    'HOST': url.hostname,
+    'PORT': url.port or '',
 }
+}
+
 
 
 # Password validation

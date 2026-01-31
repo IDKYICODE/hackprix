@@ -2,20 +2,24 @@ import json
 import os
 from pathlib import Path
 from web3 import Web3
+from dotenv import load_dotenv
 
-# 1. Initialize Connection to Hardhat Node
-w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))
+# Load environment variables from .env file
+load_dotenv()
+
+# 1. Initialize Connection to Blockchain
+w3 = Web3(Web3.HTTPProvider(os.getenv('RPC_URL', 'http://127.0.0.1:8545')))
 
 # 2. Project Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 BLOCKCHAIN_DIR = BASE_DIR / 'blockchain' / 'student-reward-system'
 
-# 3. Contract Addresses 
-EDU_TOKEN_ADDR = Web3.to_checksum_address("0x5FbDB2315678afecb367f032d93F642f64180aa3")
-MARKET_ADDR = Web3.to_checksum_address("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512")
+# 3. Contract Addresses
+EDU_TOKEN_ADDR = Web3.to_checksum_address(os.getenv('EDU_TOKEN_ADDRESS'))
+MARKET_ADDR = Web3.to_checksum_address(os.getenv('MARKETPLACE_ADDRESS'))
 
 # 4. Admin Credentials
-ADMIN_PVT_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+ADMIN_PVT_KEY = os.getenv('ADMIN_PRIVATE_KEY')
 ADMIN_ADDR = w3.eth.account.from_key(ADMIN_PVT_KEY).address
 
 # --- UTILS ---
