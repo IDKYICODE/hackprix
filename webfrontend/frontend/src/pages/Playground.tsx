@@ -149,7 +149,7 @@ const Playground = () => {
       "Cell City Siege": "https://blood-game-c44cb.web.app/",
       "Molecule Builder": "https://molecule-builder-911c7.web.app/",
       "Anatomy VR Labroom": "https://my-anatomy-vr-2026.web.app/",
-      "VR Kahoot": "https://98.130.129.193:8080/",
+      "VR Kahoot": "https://18.60.212.203:8080/",
       "VR Classroom": "https://dclassroom-d128d.web.app/",
     };
 

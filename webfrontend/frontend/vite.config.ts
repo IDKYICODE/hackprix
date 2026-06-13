@@ -12,10 +12,13 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api'),
+        // No rewrite needed if the backend expects /api/
       },
     },
+    allowedHosts: ["netlike-baccivorous-nicki.ngrok-free.dev","*"],
   },
+  // Ensure the base path is correct for your hosting
+  base: '/', 
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

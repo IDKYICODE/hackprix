@@ -31,7 +31,6 @@ SECRET_KEY = 'django-insecure-&7!q=uc2v5s8!gx)w!yn(4o)om^2zs-5@=5gr)9s#qzn05hluv
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -65,16 +64,36 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "corsheaders.middleware.CorsMiddleware",  # <--- Move it HERE
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.common.CommonMiddleware', # <--- CorsMiddleware must be above this
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True  # This replaces ["*"]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# settings.py
+
+# Remove the ["*"] and use this instead
+ALLOWED_HOSTS = [
+    'netlike-baccivorous-nicki.ngrok-free.dev', 
+    'localhost', 
+    '127.0.0.1',
+    '.ngrok-free.dev', # This acts as a wildcard for all ngrok subdomains
+]
+# Allows all ngrok subdomains (covers the new 'ngrok-free.app' and old 'ngrok.io')
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.ngrok-free.app",
+    "https://*.ngrok-free.dev",
+    "https://*.ngrok.io",
+    "http://localhost:8080",
+    "http://127.0.0.1:8000",
+]
 
 ROOT_URLCONF = 'core.urls'
 
@@ -102,16 +121,24 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Parse DATABASE_URL like: postgresql://USER:PASS@HOST:PORT/NAME
-url = urlparse(DATABASE_URL)
+#url = urlparse(DATABASE_URL)
+#DATABASES = {
+#'default': {
+#    'ENGINE': 'django.db.backends.postgresql',
+#    'NAME': url.path[1:],
+#    'USER': url.username,
+#    'PASSWORD': url.password,
+#   'HOST': url.hostname,
+#    'PORT': url.port or '',
+#}
+#}
+
+
 DATABASES = {
-'default': {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': url.path[1:],
-    'USER': url.username,
-    'PASSWORD': url.password,
-    'HOST': url.hostname,
-    'PORT': url.port or '',
-}
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 

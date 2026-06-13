@@ -426,3 +426,6 @@ class LearningResource(models.Model):
     def __str__(self):
         scope = "Course" if self.course and not self.lecture else "Lecture"
         return f"{scope} Resource: {self.title}"
+    
+
+

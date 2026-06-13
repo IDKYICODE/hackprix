@@ -99,7 +99,7 @@ const Lounge = () => {
     localStorage.setItem("vrGameRoomName", "VR Arena");
     
     // If you want the "VR Arena" button to open a specific link immediately like Playground:
-    const targetUrl = "https://98.130.129.193:8080/"; // Example default VR link
+    const targetUrl = "https://18.60.212.203:8080/"; // Example default VR link
     await Browser.open({ url: targetUrl });
     
     // Or, if you want it to just navigate to the playground:

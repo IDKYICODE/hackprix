@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Award, Trophy, Star, Settings, X, Pencil, LogOut, User as UserIcon, Wallet } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchWalletInfo } from "@/lib/authClient";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 type WalletInfo = {
   address: string | null;
@@ -24,6 +25,7 @@ const Profile = () => {
     bio: "",
     mobile_number: "",
     wallet_address: "",
+    private_key: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,7 @@ const Profile = () => {
         bio: user.bio || "",
         mobile_number: user.mobile_number || "",
         wallet_address: user.wallet_address || "",
+        private_key: (user as any).private_key || "",
       });
     }
   }, [user]);
@@ -71,10 +74,18 @@ const Profile = () => {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const formData = new FormData();
-      formData.append("profile_image", file);
-      await updateUserProfile(formData);
+    if (!file) return;
+    console.log("[PROFILE] File selected:", file.name, file.type, file.size);
+    try {
+      console.log("[PROFILE] Starting Cloudinary upload...");
+      const imageUrl = await uploadToCloudinary(file);
+      console.log("[PROFILE] Cloudinary upload success. URL:", imageUrl);
+      console.log("[PROFILE] Calling updateUserProfile...");
+      await updateUserProfile({ profile_image: imageUrl });
+      console.log("[PROFILE] Profile updated successfully");
+    } catch (error) {
+      console.error("[PROFILE] Upload failed:", error);
+      alert(`Upload failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -221,6 +232,12 @@ const Profile = () => {
                 <span className="font-semibold text-muted-foreground">Address:</span>
                 <span className="text-foreground text-xs mt-1 break-all">{walletInfo.address}</span>
               </div>
+              <div className="flex items-center justify-between pt-1 border-t border-muted/20">
+                <span className="font-semibold text-muted-foreground">Private Key status:</span>
+                <span className={(user as any).private_key ? "text-green-500 font-bold text-xs" : "text-amber-500 font-bold text-xs"}>
+                  {(user as any).private_key ? "CONFIGURED (SECURE)" : "NOT CONFIGURED"}
+                </span>
+              </div>
             </div>
           ) : (
             <p className="text-muted-foreground text-center">No wallet address linked.</p>
@@ -313,6 +330,18 @@ const Profile = () => {
                   value={editFormData.wallet_address}
                   onChange={handleModalFormChange}
                   className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Private Key</label>
+                <input
+                  type="password"
+                  name="private_key"
+                  value={editFormData.private_key}
+                  onChange={handleModalFormChange}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
+                  placeholder="0x..."
                 />
               </div>
               <Button type="submit">Save Changes</Button>
