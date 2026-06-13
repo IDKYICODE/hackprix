@@ -24,6 +24,7 @@
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "eventemitter3": "^5.0.4",
+    "framer-motion": "^12.40.0",
     "lodash": "^4.17.23",
     "lovable-tagger": "^1.1.13",
     "lucide-react": "^0.563.0",

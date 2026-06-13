@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card } from "@/components/ui/card";
-import { Box, Trophy, Users, Zap, Loader2, Radio, Award } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Zap, Loader2, Radio, Gamepad2, Play, MessageSquare } from "lucide-react";
 import { generateQuizQuestions, api } from "@/lib/authClient";
 import { App } from '@capacitor/app';
 import type { PluginListenerHandle } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
+import SpatialCard from "@/components/SpatialCard";
 
 const Lounge = () => {
   const navigate = useNavigate();
@@ -16,7 +15,6 @@ const Lounge = () => {
   const [loadingSubject, setLoadingSubject] = useState<string | null>(null);
   const appStateListenerRef = useRef<PluginListenerHandle | null>(null);
 
-  // --- START REWARD LOGIC ---
   useEffect(() => {
     const processReward = async () => {
       const startTimeStr = localStorage.getItem("vrGameStartTime");
@@ -72,12 +70,11 @@ const Lounge = () => {
       window.removeEventListener("focus", processReward);
     };
   }, [fetchUser]);
-  // --- END REWARD LOGIC ---
 
   const subjects = [
-    { id: "Biology", name: "Life Sciences", icon: "🧬", color: "from-green-500 to-emerald-500", players: 4 },
-    { id: "Chemistry", name: "Atomic Lab", icon: "🧪", color: "from-purple-500 to-pink-500", players: 2 },
-    { id: "Math", name: "Logic Arena", icon: "🔢", color: "from-blue-500 to-cyan-500", players: 7 },
+    { id: "Biology", name: "Life Sciences", icon: "🧬", color: "#34D399", players: 4 },
+    { id: "Chemistry", name: "Atomic Lab", icon: "🧪", color: "#A855F7", players: 2 },
+    { id: "Math", name: "Logic Arena", icon: "🔢", color: "#60A5FA", players: 7 },
   ];
 
   const handleEnterRoom = async (subjectId: string) => {
@@ -87,114 +84,110 @@ const Lounge = () => {
       navigate(`/quiz-room/${subjectId}`, { state: { questions: data.questions } });
     } catch (error) {
       console.error("Failed to generate quiz:", error);
-      alert("AI Lab is busy. Please try again in a moment.");
+      toast.error("AI Lab is busy. Please try again in a moment.");
     } finally {
       setLoadingSubject(null);
     }
   };
 
-  const handleVRArenaClick = async () => {
-    // Logic updated to match Playground.tsx behavior
+  const handleOpenVRKahoot = () => {
     localStorage.setItem("vrGameStartTime", Date.now().toString());
-    localStorage.setItem("vrGameRoomName", "VR Arena");
-    
-    // If you want the "VR Arena" button to open a specific link immediately like Playground:
-    const targetUrl = "https://18.60.212.203:8080/"; // Example default VR link
-    await Browser.open({ url: targetUrl });
-    
-    // Or, if you want it to just navigate to the playground:
-    // navigate('/playground'); 
+    localStorage.setItem("vrGameRoomName", "VR Kahoot");
+    window.open("https://18.60.212.203:8080/", "_blank");
   };
 
   return (
-    <div className="pb-24 px-4 pt-6 max-w-lg mx-auto min-h-screen space-y-8 bg-background/50">
-      {/* Dynamic Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 to-transparent p-6 border border-accent/10 shadow-2xl">
-        <div className="relative z-10 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-black text-foreground tracking-tighter uppercase italic">
-              The Lounge
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                13 Players Online
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen pt-32 pb-40 px-6 overflow-hidden relative">
+      <div className="max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 text-[10px] tracking-[0.2em] font-bold mb-6 uppercase">
+            Social Hub
+          </span>
+          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-gradient leading-none mb-4 uppercase italic">Student Lounge</h1>
+          <p className="text-white/30 text-lg max-w-2xl mx-auto leading-relaxed mt-8 font-medium italic">       
+            Connect with other scholars and participate in interactive quiz battles.
+          </p>
+        </motion.div>
 
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="group gap-2 border-accent/30 bg-background/50 backdrop-blur-md hover:bg-accent/20 transition-all rounded-full"
-            onClick={handleVRArenaClick}
+        <div className="max-w-4xl mx-auto mb-20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
           >
-            <Box className="w-4 h-4 text-accent group-hover:rotate-12 transition-transform" />
-            <span className="font-black text-[10px] uppercase">VR Arena</span>
-          </Button>
-        </div>
-        
-        <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-accent/20 blur-[50px] rounded-full" />
-      </div>
-
-      {/* Main Subject Grid */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Radio className="w-3 h-3" /> Select Category
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-          {subjects.map((s) => (
-            <Card 
-              key={s.id}
-              className={`group p-1 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] border-none bg-gradient-to-r ${s.color} shadow-lg ${
-                loadingSubject === s.id ? "opacity-70 grayscale" : ""
-              }`}
-              onClick={() => handleEnterRoom(s.id)}
-            >
-              <div className="bg-card rounded-[calc(var(--radius)-2px)] p-5 relative overflow-hidden h-full">
-                <div className="flex items-center gap-5 relative z-10">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform duration-500`}>
-                    {loadingSubject === s.id ? <Loader2 className="animate-spin w-6 h-6 text-white" /> : s.icon}
-                  </div>
-
-                  <div className="flex-1">
-                    <h3 className="font-black text-xl tracking-tight text-foreground group-hover:text-accent transition-colors">
-                      {s.name}
-                    </h3>
-                    <div className="flex gap-4 mt-2">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{s.players} Active</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-accent" />
-                        <span className="text-[10px] font-bold text-accent uppercase">+100 XP</span>
-                      </div>
+            <SpatialCard className="p-12 md:p-16 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 border-white/10 relative overflow-hidden group">
+               <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-12">
+                    <div className="w-20 h-20 rounded-[2.5rem] bg-white/10 border border-white/20 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                      <Gamepad2 size={40} className="text-white" />
                     </div>
                   </div>
-                  <Trophy className="w-8 h-8 text-muted-foreground/10 group-hover:text-accent/20 transition-colors" />
-                </div>
-                <div className="absolute bottom-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-              </div>
-            </Card>
-          ))}
+
+                  <h2 className="text-5xl font-black text-white mb-6 tracking-tight uppercase italic">VR Kahoot Battle</h2>
+                  <p className="text-lg text-white/50 leading-relaxed mb-12 max-w-xl">
+                    Join an immersive virtual reality space where knowledge becomes a competition. Face off against classmates in real-time quiz challenges.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-6">
+                    <button
+                      onClick={handleOpenVRKahoot}
+                      className="px-10 py-6 rounded-2xl bg-white text-black font-black text-[12px] tracking-[0.2em] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(255,255,255,0.2)] uppercase italic"
+                    >
+                      <Play size={18} fill="black" />
+                      ENTER BATTLE ARENA
+                    </button>
+                    <button className="px-10 py-6 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[12px] tracking-[0.2em] hover:bg-white/10 transition-all flex items-center justify-center gap-4 uppercase italic">    
+                      <MessageSquare size={18} />
+                      VIEW SCOREBOARD
+                    </button>
+                  </div>
+               </div>
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-indigo-500/10 blur-[120px] -z-10 group-hover:bg-indigo-500/20 transition-colors" />
+            </SpatialCard>
+          </motion.div>
+        </div>
+
+        {/* AI Quiz Section */}
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-4 mb-12">
+            <Radio size={24} className="text-white/40" />
+            <h2 className="text-3xl font-black tracking-tight text-white uppercase italic">AI Quiz Arena</h2>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {subjects.map((s, i) => (
+              <motion.div key={s.id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                <SpatialCard className={`h-full group cursor-pointer border-white/5 ${loadingSubject === s.id ? "opacity-50" : ""}`}>
+                  <div onClick={() => !loadingSubject && handleEnterRoom(s.id)} className="h-full flex flex-col">
+                    <div className="flex justify-between items-start mb-8">
+                      <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-2xl text-3xl">
+                        {loadingSubject === s.id ? <Loader2 className="animate-spin w-8 h-8 text-white" /> : s.icon}
+                      </div>
+                      <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[8px] font-black text-white/30 tracking-widest uppercase">
+                        {s.players} Active
+                      </div>
+                    </div>
+                    <h3 className="text-3xl font-black text-white mb-2 leading-tight uppercase italic">{s.name}</h3>
+                    <div className="flex items-center gap-2 mt-auto pt-8 border-t border-white/5 text-white/20 group-hover:text-white transition-colors">
+                      <Zap size={14} className="text-accent" />
+                      <span className="text-[10px] font-bold tracking-widest uppercase">+100 XP REWARD</span>
+                    </div>
+                  </div>
+                </SpatialCard>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl border border-dashed border-muted-foreground/20 bg-muted/5 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-          <Award className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-foreground">Global Tournament Starting Soon</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Join the waitlist for the Science Cup</p>
-        </div>
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none -z-10 opacity-30">
+        <div className="absolute top-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-indigo-600/20 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-20%] left-[-20%] w-[70vw] h-[70vw] bg-purple-600/20 rounded-full blur-[140px]" />
       </div>
     </div>
   );

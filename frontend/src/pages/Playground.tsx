@@ -1,247 +1,150 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useEffect, useRef } from "react";
-import { Users, Play, Clock, ShieldAlert } from "lucide-react";
+import { Zap, Users, Play, Info, ShieldCheck, Gamepad2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/authClient";
 import { App } from '@capacitor/app';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
+import SpatialCard from "@/components/SpatialCard";
 
-const vrRooms = [
-  {
-    id: 1,
-    name: "VR Kahoot",
-    subject: "General",
-    description: "Attend quiz in a virtual reality setting",
-    players: 5,
-    maxPlayers: 25,
-    icon: "🧠",
-    color: "from-blue-500 to-indigo-500",
-  },
-  {
-    id: 2,
-    name: "VR Classroom",
-    subject: "General",
-    description: "Join a virtual reality classroom session",
-    players: 7,
-    maxPlayers: 30,
-    icon: "🏫",
-    color: "from-yellow-500 to-red-500",
-  },
-  {
-    id: 3,
-    name: "Cell City Siege",
-    subject: "Biology",
-    description: "Battle viruses inside a 3D cell",
-    players: 12,
-    maxPlayers: 20,
-    icon: "🦠",
-    color: "from-green-500 to-emerald-500",
-  },
-  {
-    id: 4,
-    name: "Molecule Builder",
-    subject: "Chemistry",
-    description: "Build 3D molecules in VR",
-    players: 8,
-    maxPlayers: 15,
-    icon: "⚗️",
-    color: "from-purple-500 to-pink-500",
-  },
-  {
-    id: 5,
-    name: "Anatomy VR Labroom",
-    subject: "Biology",
-    description: "Explore 3D anatomy models in a virtual lab",
-    players: 10,
-    maxPlayers: 20,
-    icon: "💀",
-    color: "from-red-500 to-orange-500",
-  }
+const VR_ROOMS = [
+  { id: 2, name: "VR Classroom", subject: "GENERAL", desc: "Join a live virtual classroom session.", players: 7, max: 30, color: "#FBBF24" },
+  { id: 3, name: "Cell City Siege", subject: "BIOLOGY", desc: "Battle viruses inside a 3D living cell.", players: 12, max: 20, color: "#34D399" },
+  { id: 4, name: "Molecule Builder", subject: "CHEMISTRY", desc: "Construct 3D molecules in VR space.", players: 8, max: 15, color: "#60A5FA" },
+  { id: 5, name: "Anatomy VR Lab", subject: "BIOLOGY", desc: "Explore the human body in immersive 3D.", players: 10, max: 20, color: "#F87171" },
 ];
 
-const Playground = () => {
+const URLS: Record<string, string> = {
+  "Cell City Siege": "https://blood-game-c44cb.web.app/",
+  "Molecule Builder": "https://molecule-builder-911c7.web.app/",
+  "Anatomy VR Lab": "https://my-anatomy-vr-2026.web.app/",
+  "VR Classroom": "https://dclassroom-d128d.web.app/",
+};
 
+export default function Playground() {
   const { fetchUser } = useAuth();
-  const appStateListenerRef = useRef<PluginListenerHandle | null>(null);
+  const listenerRef = useRef<PluginListenerHandle | null>(null);
 
   useEffect(() => {
     const processReward = async () => {
-      const startTimeStr = localStorage.getItem("vrGameStartTime");
+      const startStr = localStorage.getItem("vrGameStartTime");
       const roomName = localStorage.getItem("vrGameRoomName");
-
-      if (startTimeStr && roomName) {
-        const startTime = parseInt(startTimeStr, 10);
-        const now = Date.now();
-        const duration = Math.round((now - startTime) / 1000);
-
-        // --- Session Expiry Check ---
-        // If duration > 2 hours, assume the user left the app or forgot.
-        const MAX_SESSION_TIME = 7200; 
-        if (duration > MAX_SESSION_TIME) {
-          localStorage.removeItem("vrGameStartTime");
-          localStorage.removeItem("vrGameRoomName");
-          toast.error("VR Session expired. Join again to earn tokens.");
-          return;
-        }
-
-        // Clear immediately to prevent double-claiming on accidental re-focus
-        localStorage.removeItem("vrGameStartTime");
-        localStorage.removeItem("vrGameRoomName");
-
-        // Reward only if they spent more than 15 seconds
-        if (duration > 15) {
-          try {
-            toast.info(`Calculating rewards for your time in ${roomName}...`);
-            const response = await api.post("/lectures/reward-time/", { duration });
-            
-            const { xp_awarded, tokens_awarded } = response.data;
-            
-            let rewardMessage = "You've been rewarded!";
-            if (xp_awarded > 0 && tokens_awarded > 0) {
-              rewardMessage = `You earned ${xp_awarded} XP and ${tokens_awarded} EDU!`;
-            } else if (xp_awarded > 0) {
-              rewardMessage = `You earned ${xp_awarded} XP!`;
-            } else if (tokens_awarded > 0) {
-              rewardMessage = `You earned ${tokens_awarded} EDU!`;
-            }
-
-            toast.success(rewardMessage);
-            await fetchUser(); // Refetch user data to update profile
-            
-          } catch (error) {
-            console.error("Failed to award time:", error);
-            toast.error("Could not process your reward.");
-          }
-        }
+      if (!startStr || !roomName) return;
+      const duration = Math.round((Date.now() - parseInt(startStr, 10)) / 1000);
+      localStorage.removeItem("vrGameStartTime");
+      localStorage.removeItem("vrGameRoomName");
+      if (duration > 7200) {
+        toast.error("VR session expired.");
+        return;
+      }
+      if (duration <= 15) return;
+      try {
+        const { data } = await api.post("/lectures/reward-time/", { duration });
+        const { xp_awarded, tokens_awarded } = data;
+        if (xp_awarded > 0 && tokens_awarded > 0) toast.success(`+${xp_awarded} XP  +${tokens_awarded} EDU!`);  
+        else if (xp_awarded > 0) toast.success(`+${xp_awarded} XP!`);
+        else if (tokens_awarded > 0) toast.success(`+${tokens_awarded} EDU!`);
+        await fetchUser();
+      } catch {
+        toast.error("Could not process reward.");
       }
     };
-
-    // Mobile: Fires when returning to the app from the In-App Browser
-    const setupListeners = async () => {
-        appStateListenerRef.current = await App.addListener('appStateChange', ({ isActive }) => {
-            if (isActive) {
-              processReward();
-            }
-        });
-    };
-    setupListeners();
-
-    // Web: Fires when the browser tab regains focus
+    (async () => {
+      listenerRef.current = await App.addListener("appStateChange", ({ isActive }) => { if (isActive) processReward(); });
+    })();
     window.addEventListener("focus", processReward);
-
     return () => {
-      if (appStateListenerRef.current) {
-        appStateListenerRef.current.remove();
-      }
+      listenerRef.current?.remove();
       window.removeEventListener("focus", processReward);
     };
   }, [fetchUser]);
 
-  const handleJoinRoom = async (room: typeof vrRooms[0]) => {
-    // 1. Mark the start time ONLY upon manual click
+  const handleJoin = async (room: any) => {
     localStorage.setItem("vrGameStartTime", Date.now().toString());
     localStorage.setItem("vrGameRoomName", room.name);
-
-    const urls: Record<string, string> = {
-      "Cell City Siege": "https://blood-game-c44cb.web.app/",
-      "Molecule Builder": "https://molecule-builder-911c7.web.app/",
-      "Anatomy VR Labroom": "https://my-anatomy-vr-2026.web.app/",
-      "VR Kahoot": "https://18.60.212.203:8080/",
-      "VR Classroom": "https://dclassroom-d128d.web.app/",
-    };
-
-    const targetUrl = urls[room.name];
-
-    if (targetUrl) {
-      // 2. Open in-app browser (Mobile) or new tab (Web)
-      // This maintains the "Lounge" state in the background
-      await Browser.open({ url: targetUrl });
-    } else {
-      toast.error("Room link not found.");
-      localStorage.removeItem("vrGameStartTime");
+    const url = URLS[room.name];
+    if (url) {
+      try { await Browser.open({ url }); } catch (e) { window.open(url, '_blank'); }
     }
   };
 
+  const totalOnline = VR_ROOMS.reduce((s, r) => s + r.players, 0);
+
   return (
-    <div className="pb-20 px-4 pt-6 max-w-lg mx-auto min-h-screen">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gradient mb-2">VR Lounge</h1>
-        <p className="text-muted-foreground">Jump into immersive learning games</p>
-      </div>
-
-      {/* Lobby Banner */}
-      <Card className="p-6 mb-6 shadow-float gradient-cyber text-center">
-        <div className="text-5xl mb-3 animate-float">🎮</div>
-        <h2 className="text-xl font-bold text-primary-foreground mb-2">
-          Virtual Campus Lobby
-        </h2>
-        <p className="text-sm text-primary-foreground/80">
-          Choose a portal to enter a subject's VR game world
-        </p>
-      </Card>
-
-      {/* Rooms List */}
-      <div className="space-y-4">
-        {vrRooms.map((room) => (
-          <Card
-            key={room.id}
-            className="p-4 shadow-card gradient-card border-border hover:border-accent/50 transition-all hover:shadow-float"
-          >
-            <div className="flex gap-4">
-              <div
-                className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${room.color} flex items-center justify-center text-4xl flex-shrink-0 shadow-lg`}
-              >
-                {room.icon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-1">
-                  <div>
-                    <h3 className="font-bold text-foreground">{room.name}</h3>
-                    <p className="text-xs text-accent">{room.subject}</p>
-                  </div>
-                  <div className="flex items-center gap-1 bg-accent/10 px-2 py-1 rounded-full">
-                    <Users className="w-4 h-4 text-accent" />
-                    <span className="text-xs font-semibold text-accent">
-                      {room.players}/{room.maxPlayers}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">{room.description}</p>
-                <Button
-                  className="w-full gradient-neon glow-cyan hover:scale-105 transition-all"
-                  onClick={() => handleJoinRoom(room)}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Join Room
-                </Button>
+    <div className="min-h-screen">
+      <section className="pt-24 md:pt-32 pb-12 px-4 md:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 md:gap-12">       
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <span className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50 text-[8px] md:text-[10px] tracking-[0.2em] font-bold mb-4 uppercase">Virtual Arena</span>
+            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black tracking-tighter text-gradient leading-[0.9] uppercase italic">Playground</h1>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-4 md:gap-6">
+            <div className="glass-panel px-6 py-3 md:px-8 md:py-4 rounded-[1.5rem] md:rounded-[2rem] text-right">
+              <p className="text-[8px] md:text-[10px] font-bold text-white/30 tracking-widest uppercase mb-1">Active Players</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl md:text-3xl font-black text-white">{totalOnline}</span>
+                <span className="text-[10px] md:text-xs font-bold text-white/30 uppercase">In-Game</span>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
+              <Gamepad2 size={20} className="md:w-6 md:h-6" />
+            </div>
+          </motion.div>
+        </div>
+      </section>
 
-      {/* Info Notice */}
-      <div className="mt-6 space-y-3">
-        <Card className="p-4 shadow-card gradient-card border-secondary/30 flex items-center gap-3">
-          <Clock className="w-5 h-5 text-secondary" />
-          <p className="text-sm text-muted-foreground">
-            Earn <span className="font-bold text-secondary">1 EDU Token</span> for every minute spent learning in VR!
-          </p>
-        </Card>
-        
-        <Card className="p-4 shadow-card gradient-card border-red-500/20 flex items-center gap-3">
-          <ShieldAlert className="w-5 h-5 text-red-400" />
-          <p className="text-sm text-muted-foreground">
-            Sessions over 2 hours will be marked as expired.
-          </p>
-        </Card>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-40">
+        <div className="flex items-center gap-3 md:gap-4 mb-8 md:mb-12">
+          <ShieldCheck size={18} className="md:w-5 md:h-5 text-white/40" />
+          <h2 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase italic">Available VR Suites</h2>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {VR_ROOMS.map((room, i) => (
+            <motion.div key={room.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }}>
+              <SpatialCard className="h-full flex flex-col group p-6 md:p-8">
+                <div className="flex justify-between items-start mb-6 md:mb-8">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <Zap size={18} className="md:w-5 md:h-5" style={{ color: room.color }} />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[7px] md:text-[8px] font-black text-white/20 tracking-widest uppercase mb-1">Subject</p>
+                    <p className="text-[10px] md:text-xs font-black uppercase" style={{ color: room.color }}>{room.subject}</p>
+                  </div>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight group-hover:translate-x-1 transition-transform uppercase italic">{room.name}</h3>
+                <p className="text-xs md:text-sm text-white/40 leading-relaxed mb-8 md:mb-10">{room.desc}</p>
+                <div className="mt-auto space-y-4 md:space-y-6">
+                  <div className="flex justify-between items-end mb-2">
+                    <div className="flex items-center gap-2">
+                      <Users size={12} className="md:w-3.5 md:h-3.5 text-white/20" />
+                      <span className="text-[8px] md:text-[10px] font-bold text-white/30 tracking-widest uppercase">CAPACITY</span>
+                    </div>
+                    <span className="text-[10px] md:text-sm font-black text-white">{room.players}/{room.max}</span>
+                  </div>
+                  <div className="h-1 md:h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <motion.div initial={{ width: 0 }} whileInView={{ width: `${(room.players/room.max)*100}%` }} transition={{ duration: 1, ease: "circOut" }} style={{ backgroundColor: room.color }} className="h-full rounded-full" />
+                  </div>
+                  <button onClick={() => handleJoin(room)} className="w-full py-4 md:py-5 rounded-2xl bg-white text-black font-black text-[10px] tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 md:gap-3 mt-4 shadow-[0_0_30px_rgba(255,255,255,0.1)] uppercase italic">
+                    <Play size={14} className="md:w-4 md:h-4" fill="black" /> ENTER ROOM
+                  </button>
+                </div>
+              </SpatialCard>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-16 md:mt-20 p-6 md:p-8 rounded-[2rem] border border-white/5 bg-white/[0.02] flex flex-col sm:flex-row items-start gap-4 md:gap-6">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+            <Info size={18} className="md:w-5 md:h-5 text-white/20" />
+          </div>
+          <div>
+            <h4 className="text-base md:text-lg font-black text-white/80 mb-2 uppercase italic">Arena Guidelines</h4>
+            <p className="text-xs md:text-sm text-white/30 leading-relaxed max-w-3xl">Academic gaming sessions are limited to 2 hours of continuous simulation. Rewards are calculated based on active engagement. Ensure your neural link (VR Headset) is properly calibrated before entering the immersive suites.</p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
-};
-
-export default Playground;
+}

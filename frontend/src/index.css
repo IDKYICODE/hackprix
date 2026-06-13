@@ -1,92 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 210 100% 98%;
-    --foreground: 220 80% 12%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 80% 12%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 80% 12%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 220 80% 15%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
 
-    --secondary: 270 75% 65%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 220 20% 50%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 180 100% 50%;
-    --accent-foreground: 220 80% 12%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 30% 90%;
-    --input: 220 30% 90%;
-    --ring: 180 100% 50%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
 
-    --radius: 1rem;
-
-    /* Custom EduVerse tokens */
-    --neon-cyan: 180 100% 50%;
-    --neon-purple: 270 75% 65%;
-    --space-blue: 220 80% 15%;
-    --deep-space: 220 90% 8%;
-    
-    /* Gradients */
-    --gradient-cyber: linear-gradient(135deg, hsl(220 80% 15%) 0%, hsl(270 75% 35%) 100%);
-    --gradient-neon: linear-gradient(135deg, hsl(180 100% 50%) 0%, hsl(270 75% 65%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(210 100% 98%) 100%);
-    
-    /* Shadows */
-    --shadow-glow-cyan: 0 0 20px hsla(180, 100%, 50%, 0.3);
-    --shadow-glow-purple: 0 0 20px hsla(270, 75%, 65%, 0.3);
-    --shadow-card: 0 4px 20px hsla(220, 80%, 15%, 0.08);
-    --shadow-float: 0 8px 30px hsla(220, 80%, 15%, 0.12);
-  }
-
-  .dark {
-    --background: 220 90% 8%;
-    --foreground: 210 100% 98%;
-
-    --card: 220 80% 12%;
-    --card-foreground: 210 100% 98%;
-
-    --popover: 220 80% 12%;
-    --popover-foreground: 210 100% 98%;
-
-    --primary: 180 100% 50%;
-    --primary-foreground: 220 90% 8%;
-
-    --secondary: 270 75% 65%;
-    --secondary-foreground: 220 90% 8%;
-
-    --muted: 220 60% 18%;
-    --muted-foreground: 210 40% 70%;
-
-    --accent: 180 100% 50%;
-    --accent-foreground: 220 90% 8%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 100% 98%;
-
-    --border: 220 60% 20%;
-    --input: 220 60% 20%;
-    --ring: 180 100% 50%;
-    
-    --shadow-card: 0 4px 20px hsla(0, 0%, 0%, 0.3);
-    --shadow-float: 0 8px 30px hsla(0, 0%, 0%, 0.4);
+    --radius: 1.5rem;
   }
 }
 
@@ -97,43 +45,40 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Nunito', 'Poppins', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-@layer utilities {
-  .gradient-cyber {
-    background: var(--gradient-cyber);
+@layer components {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-spatial-md;
   }
-  
-  .gradient-neon {
-    background: var(--gradient-neon);
+
+  .spatial-card {
+    @apply relative overflow-hidden bg-card border border-white/5 rounded-3xl transition-all duration-500 hover:shadow-spatial-lg hover:-translate-y-2;
   }
-  
-  .gradient-card {
-    background: var(--gradient-card);
-  }
-  
-  .glow-cyan {
-    box-shadow: var(--shadow-glow-cyan);
-  }
-  
-  .glow-purple {
-    box-shadow: var(--shadow-glow-purple);
-  }
-  
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-  
-  .shadow-float {
-    box-shadow: var(--shadow-float);
-  }
-  
+
   .text-gradient {
-    background: var(--gradient-neon);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-white to-white/40;
   }
+}
+
+/* Custom Scrollbar for spatial feel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
 }
