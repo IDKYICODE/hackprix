@@ -183,7 +183,7 @@ export async function fetchProducts() {
     return data;
   }
   
-  export async function addToCart(productId: number, quantity: number) {
+  export async function addToCart(productId:string, quantity: number) {
     const { data } = await api.post("/marketplace/cart/add/", {
       product_id: productId,
       quantity,
@@ -191,7 +191,7 @@ export async function fetchProducts() {
     return data;
   }
   
-  export async function removeFromCart(cartItemId: number) {
+  export async function removeFromCart(cartItemId: string) {
     const { data } = await api.post("/marketplace/cart/remove/", {
       cart_item_id: cartItemId,
     });

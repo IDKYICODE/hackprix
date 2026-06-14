@@ -12,3 +12,4 @@
 /fastapiBackend/.venv
 /fastapiBackend/__pycache__
 /fastapiBackend/media
+marketplace_items.json
