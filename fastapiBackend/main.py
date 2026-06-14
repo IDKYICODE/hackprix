@@ -1136,7 +1136,7 @@ async def complete_quiz_endpoint(
     return {"message": "Quiz saved, but no wallet linked to award tokens.", "db_id": str(submission.id)}
 
 
-@api_router.post("/lectures/chat/")
+@api_router.post("/chat/")
 async def chat_bot_endpoint(
     data: ChatRequest,
     current_user: User = Depends(get_current_user)
@@ -1160,7 +1160,7 @@ async def chat_bot_endpoint(
             ))
 
         chat = client.chats.create(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             config=types.GenerateContentConfig(
                 temperature=0.7,
                 max_output_tokens=2048,
@@ -1179,6 +1179,84 @@ async def chat_bot_endpoint(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/scholar-observations/")
+async def get_scholar_observations(current_user: User = Depends(get_current_user)):
+    import logging
+    # Grab Uvicorn's default logger
+    logger = logging.getLogger("uvicorn.error")
+
+    try:
+        import httpx
+        import json
+        from google import genai
+        from google.genai import types
+
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+
+        profile_data = {}
+        try:
+            async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+                resp = await client.get(
+                    f"https://15.206.205.126:8080/api/profile/{current_user.username}"
+                )
+                
+                # Print the status code to the terminal immediately
+                print(f"[OBSERVATIONS] Response Status: {resp.status_code}", flush=True)
+                
+                if resp.status_code == 200:
+                    profile_data = resp.json()
+                    
+                    # Force print the data to the terminal
+                    print(f"[OBSERVATIONS] Profile Data: {profile_data}", flush=True)
+                    
+                    # Also log it formally
+                    logger.info(f"Profile Data fetched for {current_user.username}: {profile_data}")
+                else:
+                    print(f"[OBSERVATIONS] Failed to fetch profile. Status: {resp.status_code}", flush=True)
+                    logger.warning(f"Failed to fetch profile for {current_user.username}. Status: {resp.status_code}")
+                    
+        except Exception as http_err:
+            # Print exactly why the request failed (timeout, connection refused, etc.)
+            print(f"[OBSERVATIONS] HTTPX Error: {str(http_err)}", flush=True)
+            logger.error(f"HTTPX Error fetching profile: {str(http_err)}")
+
+        profile_summary = json.dumps(profile_data, indent=2) if profile_data else f"Username: {current_user.username}, XP: {current_user.xp}"
+
+        prompt = f"""You are an academic advisor AI. Based on the student profile data below, generate 3 to 5 concise, insightful, and accurate observations on the various weaknesses and strengths in various subjects and topics.
+
+Return ONLY a valid JSON array of about 3 to 5 strings. No markdown, no explanation, just the array.
+
+Student profile:
+{profile_summary}
+
+Format: ["observation 1", "observation 2", "observation 3", "observation 4", "observation 5"]"""
+
+        genai_client = genai.Client(api_key=api_key)
+        response = genai_client.models.generate_content(
+            model="gemini-2.5-flash", # Updated to a valid model version
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
+        )
+
+        import re
+        text = response.text.strip()
+        match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if match:
+            observations = json.loads(match.group())
+            observations = [str(o) for o in observations[:5]]
+        else:
+            observations = [text[:300]]
+
+        return {"observations": observations}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc() # Prints the stack trace if Gemini or something else fails
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/lectures/multi-quiz/generate/{subject}/")
 async def generate_quiz_ai(
@@ -1202,7 +1280,7 @@ async def generate_quiz_ai(
         - Difficulty: Undergraduate level."""
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

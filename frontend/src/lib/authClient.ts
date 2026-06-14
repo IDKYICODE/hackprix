@@ -217,7 +217,7 @@ export async function fetchProducts() {
 // Inside lib/authClient.ts
 
 export async function sendChatMessage(message: string, history: any[]) {
-  const { data } = await api.post("/lectures/chat/", {
+  const { data } = await api.post("/chat/", {
     message: message,
     history: history,
   });
@@ -239,6 +239,11 @@ export async function submitQuizScore(subject: string, score: number) {
     score,
   });
   return data;
+}
+
+export async function fetchScholarObservations(): Promise<string[]> {
+  const { data } = await api.get("/scholar-observations/", { timeout: 30000 });
+  return data.observations as string[];
 }
 
 /** * Note: Real-time Socket interactions don't usually go through the REST client, 

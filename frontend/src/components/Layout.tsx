@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import FloatingNav from "./FloatingNav";
+import AIChatbot from "./AIChatbot";
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ const Layout = ({ children }: LayoutProps) => {
       <main className="relative z-0 pb-32">
         {children}
       </main>
+      <AIChatbot/>
       <FloatingNav />
     </div>
   );

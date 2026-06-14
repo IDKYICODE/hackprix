@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { LogOut, Settings, X, User as UserIcon, ShieldCheck, Mail, Phone, School, Award, ChevronRight, Camera, Zap, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { fetchWalletInfo, fetchRedemptionHistory } from "@/lib/authClient";
+import { fetchWalletInfo, fetchRedemptionHistory, fetchScholarObservations } from "@/lib/authClient";
 import type { Redemption } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import SpatialCard from "@/components/SpatialCard";
@@ -16,6 +16,9 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ username: "", bio: "", mobile_number: "", wallet_address: "", private_key: "" });
+  const [observations, setObservations] = useState<string[]>([]);
+  const [obsLoading, setObsLoading] = useState(false);
+  const [obsError, setObsError] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -45,13 +48,23 @@ export default function Profile() {
   }, [user]);
 
   useEffect(() => {
-    if (user) setForm({ 
-      username: user.username || "", 
-      bio: user.bio || "", 
-      mobile_number: user.mobile_number || "", 
+    if (user) setForm({
+      username: user.username || "",
+      bio: user.bio || "",
+      mobile_number: user.mobile_number || "",
       wallet_address: user.wallet_address || "",
       private_key: (user as any).private_key || ""
     });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || observations.length > 0) return;
+    setObsLoading(true);
+    setObsError(null);
+    fetchScholarObservations()
+      .then((obs) => setObservations(obs))
+      .catch(() => setObsError("Failed to generate observations. Check your Gemini API key."))
+      .finally(() => setObsLoading(false));
   }, [user]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,12 +237,47 @@ export default function Profile() {
                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30"><Settings size={20} /></div>
                 <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase italic">Scholar Observations</h2>
                 <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                <span className="text-[9px] font-black text-white/20 tracking-widest uppercase border border-white/10 px-2 py-1 rounded-lg">AI Generated</span>
               </div>
-              <div className="glass-panel p-10 rounded-[2.5rem] relative group border-white/5 hover:border-white/20 transition-all duration-700">
-                <div className="absolute top-6 right-8 text-white/[0.02] font-black text-8xl pointer-events-none group-hover:text-white/[0.05] transition-colors italic">"</div>
-                <p className="text-xl md:text-2xl text-white/40 leading-relaxed font-black italic relative z-10 group-hover:text-white/60 transition-colors">
-                  {user?.bio || "No behavioral observations recorded in this locker yet."}
-                </p>
+              <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] relative border-white/5">
+                {obsLoading && (
+                  <div className="space-y-5">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-start gap-5 animate-pulse">
+                        <div className="w-7 h-7 rounded-full bg-white/5 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 bg-white/5 rounded-full w-full" />
+                          <div className="h-3 bg-white/5 rounded-full w-4/5" />
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[9px] font-black text-white/20 tracking-[0.3em] uppercase text-center pt-4">Analyzing academic profile...</p>
+                  </div>
+                )}
+                {obsError && !obsLoading && observations.length === 0 && (
+                  <p className="text-red-400/60 font-black text-[10px] tracking-widest uppercase text-center py-6">{obsError}</p>
+                )}
+                {!obsLoading && !obsError && observations.length === 0 && (
+                  <p className="text-white/20 font-black text-[10px] tracking-[0.3em] uppercase italic text-center py-6">No observations available.</p>
+                )}
+                {!obsLoading && observations.length > 0 && (
+                  <ol className="space-y-6">
+                    {observations.map((obs, i) => (
+                      <motion.li
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="flex items-start gap-5 group/obs"
+                      >
+                        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-black text-white/30 group-hover/obs:bg-white group-hover/obs:text-black group-hover/obs:border-white transition-all duration-300 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <p className="text-sm md:text-base text-white/50 leading-relaxed font-bold italic group-hover/obs:text-white/80 transition-colors duration-300">{obs}</p>
+                      </motion.li>
+                    ))}
+                  </ol>
+                )}
               </div>
             </motion.section>
 
